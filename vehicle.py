@@ -43,6 +43,26 @@ class GenericCar():
         self.wb = 2.5  # [m]
         self.mass = 1500 # [kg]
 
+        # Throttle to engine torque
+        self.a_0 = 400
+        self.a_1 = 0.1
+        self.a_2 = -0.0002
+
+        # Gear ratio, effective radius, mass + inertia
+        self.GR = 0.35
+        self.r_e = 0.3
+        self.J_e = 10
+        self.m = 2000
+        self.g = 9.81
+
+        # Aerodynamic and friction coefficients
+        self.c_a = 1.36
+        self.c_r1 = 0.01
+
+        # Tire force
+        self.c = 10000
+        self.F_max = 10000
+
         self.state = self.State(x, y, yaw, v)
 
         self.steer = 0
@@ -58,8 +78,31 @@ class GenericCar():
         elif steering <= -self.max_steer:
             steering = -self.max_steer
 
-        F = throttle * 100
-        a = F / self.mass
+        F_aero = self.c_a * self.state.v ** 2
+        R_x = self.c_r1 * self.state.v
+        F_g = self.mass * self.g * np.sin(steering)
+        if braking >= 0:
+            braking = 1
+        F_load = (F_aero + R_x + F_g) * braking
+        T_e = throttle * (self.a_0 + self.a_1 * self.state.w_e +
+                          self.a_2 * self.state.w_e * self.state.w_e)
+        W_w = self.GR * self.state.w_e
+        if W_w == 0:
+            r_eff = 0
+        else:
+            r_eff = self.state.v / W_w
+        if self.state.v == 0:
+            s = 0
+        else:
+            s = (W_w * self.r_e - self.state.v) / self.state.v
+        cs = self.c * s
+
+        if abs(s) < 1:
+            F_x = cs
+        else:
+            F_x = self.F_max
+
+        a = (F_x - F_load) / self.mass
 
         self.state.x = self.state.x + self.state.v * \
             math.cos(self.state.yaw) * step
@@ -68,6 +111,8 @@ class GenericCar():
         self.state.yaw = self.state.yaw + self.state.v / \
             self.wb * math.tan(steering) * step
         self.state.v = self.state.v + a * step
+        self.state.w_e = self.state.w_e + self.state.w_e_dot * step
+        self.state.w_e_dot = (T_e - self.GR * self.r_e * F_load) / self.J_e
 
         if self.state. v > self.max_speed:
             self.state.v = self.max_speed

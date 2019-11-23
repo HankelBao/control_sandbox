@@ -64,11 +64,7 @@ class SteeringController:
         temp = (np.cross(target_vec, sentinel_vec)).dot(np.array([0,0,1]))
         return int((temp > 0)) - int((temp < 0))
 
-
-    def GetInputs(self):
-        return self.throttle, self.steer, self.braking
-
-class SteeringController:
+class SpeedController:
     def __init__(self, track):
         self.steer = 0
         self.throttle = 0
@@ -78,34 +74,34 @@ class SteeringController:
 
         self.d = 1
 
+        self.speed = 0
+        self.target_speed = 0
+
+        self.throttle_threshold = 0.2
+
         self.err = 0
         self.errd = 0
         self.erri = 0
+
+        self.Kp = 0
+        self.Ki = 0
+        self.Kd = 0
 
     def SetGains(self, Kp, Ki, Kd):
         self.Kp = Kp
         self.Ki = Ki
         self.Kd = Kd
 
+    def SetTargetSpeed(self, target_speed):
+        self.target_speed = target_speed
+
     def Advance(self, state, step):
-        target_ind = self.track.calc_nearest_index(state)
-        x,y = self.track[target_ind]
-        target = np.array([x,y,0])
-        sentinel = np.array([self.d * math.cos(state.yaw) + state.x, self.d * math.sin(state.yaw) + state.y, 0])
+        self.speed = state.v
 
-        # The "error" vector is the projection onto the horizontal plane (z=0) of
-        # vector between sentinel and target
-        err_vec = target - sentinel
+        # Calculate current error
+        err = self.target_speed - self.speed
 
-        # Calculate the sign of the angle between the projections of the sentinel
-        # vector and the target vector (with origin at vehicle location).
-        pos = np.array([state.x, state.y, 0])
-        sign = self.calcSign(sentinel, target, pos)
-
-        # Calculate current error (magnitude)
-        err = sign * np.linalg.norm(err_vec)
-
-        # Estimate error derivative (backward FD approximation).
+        # Estimate error derivative (backward FD approximation)
         self.errd = (err - self.err) / step;
 
         # Calculate current error integral (trapezoidal rule).
@@ -115,21 +111,12 @@ class SteeringController:
         self.err = err
 
         # Return PID output (steering value)
-        self.steer = -np.clip(self.Kp * self.err + self.Ki * self.erri + self.Kd * self.errd, np.deg2rad(-180), np.deg2rad(180))
+        thr = np.clip(self.Kp * self.err + self.Ki * self.erri + self.Kd * self.errd, -1.0, 1.0)
 
-    def calcSign(self, sentinel, target, pos):
-        '''
-        Calculate the sign of the angle between the projections of the sentinel vector
-        and the target vector (with origin at vehicle location).
-        '''
-
-        sentinel_vec = sentinel - pos
-        target_vec = target - pos
-        # print(target_vec)
-
-        temp = (np.cross(target_vec, sentinel_vec)).dot(np.array([0,0,1]))
-        return int((temp > 0)) - int((temp < 0))
-
-
-    def GetInputs(self):
-        return self.throttle, self.steer, self.braking
+        if thr > 0:
+            # Vehicle moving too slow
+            self.throttle = thr
+        else:
+            # Vehicle moving too fast: apply brakes
+            self.throttle = 0
+            self.braking = thr
