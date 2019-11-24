@@ -14,10 +14,12 @@ def main():
 
     # Render preferences
     matplotlib = True
-    irrlicht = True
+    irrlicht = False
 
-    # Simulation step size
-    step_size = 2e-2
+    # Chrono Simulation step size
+    ch_step_size = 3e-3
+    # Matplotlib Simulation step size
+    mat_step_size = 1e-2
 
     # ------------
     # Create track
@@ -35,18 +37,19 @@ def main():
 
     throttle_controller = PIDThrottleController()
     throttle_controller.SetGains(Kp=0.4, Ki=0, Kd=0)
-    throttle_controller.SetTargetSpeed(speed=15.0)
+    throttle_controller.SetTargetSpeed(speed=10.0)
 
     initLoc, initRot = GetInitPose([track.center.x[0],track.center.y[0]], [track.center.x[1], track.center.y[1]])
 
-    vehicle = ChronoVehicle(step_size=step_size, track=track, initLoc=initLoc, initRot=initRot, irrlicht=irrlicht)
+    vehicle = ChronoVehicle(step_size=ch_step_size, track=track, initLoc=initLoc, initRot=initRot, irrlicht=irrlicht)
 
     simulator = Simulator()
 
+    ch_time = mat_time = 0
     while True:
         # Update controllers
-        steering = steering_controller.Advance(step_size, vehicle)
-        throttle, braking = throttle_controller.Advance(step_size, vehicle)
+        steering = steering_controller.Advance(ch_step_size, vehicle)
+        throttle, braking = throttle_controller.Advance(ch_step_size, vehicle)
 
         # print('steering :: {}'.format(steering))
         # print('Throttle :: {}'.format(throttle))
@@ -56,10 +59,13 @@ def main():
         vehicle.driver.SetTargetThrottle(throttle)
         vehicle.driver.SetTargetBraking(braking)
 
-        vehicle.Advance(step_size)
+        vehicle.Advance(ch_step_size)
 
-        if matplotlib:
+        if matplotlib and ch_time >= mat_time:
             simulator.plot(track, vehicle)
+            mat_time += mat_step_size
+
+        ch_time += ch_step_size
 
 if __name__ == "__main__":
     main()
