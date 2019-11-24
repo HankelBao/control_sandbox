@@ -16,6 +16,7 @@ class Path:
         self.k = self.curvature(self.dx, self.dy, self.ddx, self.ddy)
         self.s = self.distance(self.x, self.y)
 
+
     def curvature(self, dx, dy, ddx, ddy):
         """
         Compute curvature at one point given first and second derivatives.
@@ -52,14 +53,13 @@ class RandomPathGenerator:
         self.maxDisplacement = 1
         self.difficulty = 1e-2
 
-    def generatePath(self, seed=1.0, scale=1.0):
+    def generatePath(self, seed=1.0):
         self.seed = seed
         random.seed(self.seed)
         self.points = []
         self.hull = []
         self.generatePoints()
         self.computeConvexHull(self.points)
-        self.hull = list(np.array(self.hull) * scale)
         self.hull.insert(0, self.hull[len(self.hull) - 1])
         return self.hull
 
