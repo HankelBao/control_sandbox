@@ -14,7 +14,7 @@ class Path:
         self.ddx, self.ddy = splev(u_new, tck, der=2)
         self.k = self.curvature(self.dx, self.dy, self.ddx, self.ddy)
         self.s = self.distance(self.x, self.y)
-
+        self.last_index = 0
 
     def curvature(self, dx, dy, ddx, ddy):
         """
@@ -28,6 +28,18 @@ class Path:
         """
         return np.cumsum(np.sqrt(np.diff(x) ** 2 + np.diff(y) ** 2))
 
+    def get_arc_length(self, x, y, n=5):
+        besti = self.last_index
+        bestd = self.distance([x, self.x[self.last_index]],[y, self.y[self.last_index]])
+        for i in range(max(0, self.last_index-n), min(len(self)-1, self.last_index+n)):
+            temp = self.distance([x, self.x[i]],[y, self.y[i]])
+            if temp < bestd:
+                bestd = temp
+                besti = i
+
+        self.last_index = besti
+        return self.s[i], besti
+        
     def getInitLoc(self, i=0):
         return [self.hull[i][0], self.hull[i][1]]
 
