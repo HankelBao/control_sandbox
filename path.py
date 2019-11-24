@@ -14,18 +14,19 @@ class Path:
         self.dx, self.dy = splev(u_new, tck, der=1)
         self.ddx, self.ddy = splev(u_new, tck, der=2)
         self.k = self.curvature(self.dx, self.dy, self.ddx, self.ddy)
+        self.s = self.distance(self.x, self.y)
 
     def curvature(self, dx, dy, ddx, ddy):
         """
         Compute curvature at one point given first and second derivatives.
-
-        :param dx: (float) First derivative along x axis
-        :param dy: (float)
-        :param ddx: (float) Second derivative along x axis
-        :param ddy: (float)
-        :return: (float)
         """
         return (dx * ddy - dy * ddx) / (dx ** 2 + dy ** 2) ** (3 / 2)
+
+    def distance(self, x, y):
+        """
+        Compute distance from beginning given two points.
+        """
+        return np.cumsum(np.sqrt(np.diff(x) ** 2 + np.diff(y) ** 2))
 
     def getInitLoc(self, i=0):
         return [self.hull[i][0], self.hull[i][1]]

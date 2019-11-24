@@ -8,7 +8,7 @@ class Track:
 
 
 class RandomTrack:
-    def __init__(self, width=100, height=100, thickness=5):
+    def __init__(self, width=1000, height=1000, thickness=5):
         self.width = width
         self.height = height
         self.thickness = thickness
@@ -17,7 +17,7 @@ class RandomTrack:
         self.createCenterline(seed)
 
     def createCenterline(self, seed=1.0):
-        self.generator = RandomPathGenerator(width=100, height=100)
+        self.generator = RandomPathGenerator(width=self.width, height=self.width)
         self.center = Path(self.generator.generatePath(seed=seed))
         self.left = Path(self.generator.generatePath(seed=seed, scale=1.1))
         self.right = Path(self.generator.generatePath(seed=seed, scale=.90))
@@ -37,8 +37,12 @@ def plot(track, seed=1.0):
     def update(val):
         track.generateTrack(seed=val)
         plt.cla()
-        color = [str((abs(k/255.))) for k in track.center.k]
-        plt.scatter(track.center.x, track.center.y, c=color, cmap='Blues')
+        # color = [str((abs(k/255.))) for k in track.center.k]
+        # plt.scatter(track.center.x, track.center.y, c=color, cmap='Blues')
+        # m = max(track.center.s)
+        # color = [str((abs(s/m))) for s in track.center.s]
+        # plt.scatter(track.center.x, track.center.y, c=color, cmap='Blues')
+        plt.plot(track.center.x, track.center.y)
         plt.plot(track.left.x, track.left.y)
         plt.plot(track.right.x, track.right.y)
 
