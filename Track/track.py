@@ -1,4 +1,4 @@
-from path import Path, RandomPathGenerator
+from Track.path import Path, RandomPathGenerator
 import numpy as np
 import sys
 

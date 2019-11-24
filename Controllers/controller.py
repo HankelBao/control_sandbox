@@ -3,12 +3,10 @@ import numpy as np
 import math
 
 class SteeringController:
-    def __init__(self, track):
+    def __init__(self, ):
         self.steer = 0
         self.throttle = 0
         self.braking = 0
-
-        self.track = track
 
         self.d = 1
 
@@ -92,8 +90,8 @@ class SpeedController:
         self.Ki = Ki
         self.Kd = Kd
 
-    def SetTargetSpeed(self, target_speed):
-        self.target_speed = target_speed
+    def SetTargetSpeed(self, speed):
+        self.target_speed = speed
 
     def Advance(self, state, step):
         self.speed = state.v
