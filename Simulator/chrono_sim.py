@@ -10,8 +10,8 @@ from Simulator.driver import Driver
 # =============================================================================
 # class Vehicle:
 #
-chrono.SetChronoDataPath('//Users/aaronyoung/Code/chrono-dev/data/')
-veh.SetDataPath('/Users/aaronyoung/Code/chrono-dev/data/vehicle/')
+chrono.SetChronoDataPath('/home/aaron/chrono/data/')
+veh.SetDataPath('/home/aaron/chrono/data/vehicle/')
 
 def GetInitPose(p1, p2):
     initLoc = chrono.ChVectorD(p1[0], p1[1], 0.5)
@@ -23,7 +23,7 @@ def GetInitPose(p1, p2):
 
     return initLoc, initRot
 
-class ChronoVehicle:
+class ChronoSim:
     def __init__(self, step_size, track, irrlicht=False, initLoc=chrono.ChVectorD(0,0,0), initRot=chrono.ChQuaternionD(1,0,0,0)):
         # Vehicle parameters for matplotlib
         self.length = 4.5  # [m]
@@ -37,9 +37,11 @@ class ChronoVehicle:
         # Chrono parameters
         self.step_size = step_size
         self.irrlicht = irrlicht
+        self.step_number = 0
 
         # Time interval between two render frames
         self.render_step_size = 1.0 / 60  # FPS = 60
+        self.render_steps = int(math.ceil(self.render_step_size / self.step_size))
 
         # JSON file for vehicle model
         self.vehicle_file = veh.GetDataPath() + "hmmwv/vehicle/HMMWV_Vehicle.json"
@@ -172,11 +174,13 @@ class ChronoVehicle:
 
     def Advance(self, step):
         if self.irrlicht:
-            self.app.GetDevice().run()
-            self.app.BeginScene(
-                True, True, chronoirr.SColor(255, 140, 161, 192))
-            self.app.DrawAll()
-            self.app.EndScene()
+            if not self.app.GetDevice().run():
+                return -1
+            if self.step_number % self.render_steps == 0:
+                self.app.BeginScene(
+                    True, True, chronoirr.SColor(255, 140, 161, 192))
+                self.app.DrawAll()
+                self.app.EndScene()
         else:
             self.vehicle.GetSystem().DoStepDynamics(step)
 
@@ -198,6 +202,11 @@ class ChronoVehicle:
         self.terrain.Advance(step)
         if self.irrlicht:
             self.app.Advance(step)
+            self.step_number += 1
+
+    def Close(self):
+        if self.app.GetDevice().run():
+            self.app.GetDevice().closeDevice()
 
     class State:
         """

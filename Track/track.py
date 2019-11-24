@@ -21,17 +21,21 @@ class Track:
             left.append([ix-dy, iy+dx])
             right.append([ix+dy, iy-dx])
             i+=1
+        if left[0] != left[-1] and right[0] != right[-1]:
+            left.append(left[0])
+            right.append(right[0])
         self.left = Path(left)
         self.right = Path(right)
 
     def plot(self, show=True):
         import matplotlib.pyplot as plt
 
-        # color = [str((abs(k/255.))) for k in self.center.k]
+        # from scipy.interpolate import interp1d
+        # m = interp1d([min(abs(self.center.k)), max(abs(self.center.k))],[0,1])
+        # color = [str(m(abs(k))) for k in self.center.k]
         # plt.scatter(self.center.x, self.center.y, c=color, cmap='Blues')
-        # m = max(self.center.s)
-        # color = [str((1 - abs(s/m))) for s in track.center.s]
-        # plt.scatter(self.center.x, self.center.y, c=color, cmap='Blues')
+        # color = [str((abs(s/m))) for s in self.center.s]
+        # plt.scatter(self.center.x[:-1], self.center.y[:-1], c=color, cmap='Reads')
         plt.plot(self.center.x, self.center.y, '-r')
         plt.plot(self.left.x, self.left.y)
         plt.plot(self.right.x, self.right.y)
@@ -63,6 +67,8 @@ class RandomTrack:
             left.append([ix-dy, iy+dx])
             right.append([ix+dy, iy-dx])
             i+=1
+        left.append(left[0])
+        right.append(right[0])
         self.left = Path(left)
         self.right = Path(right)
 
@@ -80,11 +86,13 @@ class RandomTrack:
         def update(val):
             self.generateTrack(seed=val)
             plt.cla()
-            # color = [str((abs(k/255.))) for k in self.center.k]
+            # from scipy.interpolate import interp1d
+            # m = interp1d([min(abs(self.center.k)), max(abs(self.center.k))],[0,1])
+            # color = [str(m(abs(k))) for k in self.center.k]
             # plt.scatter(self.center.x, self.center.y, c=color, cmap='Blues')
             # m = max(self.center.s)
-            # color = [str((1-abs(s/m))) for s in track.center.s]
-            # plt.scatter(self.center.x, self.center.y, c=color, cmap='Blues')
+            # color = [str((abs(s/m))) for s in self.center.s]
+            # plt.scatter(self.center.x[:-1], self.center.y[:-1], c=color, cmap='Blues')
             plt.plot(self.center.x, self.center.y)
             plt.plot(self.left.x, self.left.y)
             plt.plot(self.right.x, self.right.y)
@@ -94,19 +102,3 @@ class RandomTrack:
         seed_slider.on_changed(update)
         if show:
             plt.show()
-
-
-if __name__ == "__main__":
-    if len(sys.argv) == 2:
-        seed = int(sys.argv[1])
-    else:
-        seed = 1.0
-
-    rand_track = RandomTrack()
-    rand_track.plot(seed)
-
-    points = [[49.8, 132.9], [60.3, 129.3], [75.6, 129.0], [87.9, 131.7], [96.9, 129.6], [111.0, 120.0], [115.2, 110.7], [120.6, 96.9], [127.8, 88.5], [135.9, 77.4], [135.9, 65.1], [133.2, 51.3], [128.4, 43.2], [119.7, 36.3], [105.0, 35.7], [90.0, 36.3], [82.5, 46.2], [82.5, 63.6], [83.4, 82.2], [77.1, 93.9], [61.2, 88.5], [55.5, 73.5], [
-        57.9, 54.6], [66.6, 45.0], [75.9, 36.3], [79.2, 25.5], [78.0, 13.2], [65.1, 6.0], [50.7, 6.0], [36.6, 11.7], [29.1, 21.3], [24.0, 36.9], [24.0, 56.1], [29.1, 70.8], [24.9, 77.7], [13.5, 77.7], [6.3, 81.6], [5.7, 92.7], [6.3, 107.7], [8.7, 118.2], [15.3, 122.7], [24.3, 125.4], [31.2, 126.0], [40.8, 129.6], [49.8, 132.9]]
-    track = Track(points)
-    track.generateTrack()
-    track.plot()
