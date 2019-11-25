@@ -19,7 +19,7 @@ def main():
     # Chrono Simulation step size
     ch_step_size = 1e-2
     # Matplotlib Simulation step size
-    mat_step_size = 1e-2
+    mat_step_size = 1
 
     # ------------
     # Create track

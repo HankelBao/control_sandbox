@@ -45,7 +45,8 @@ class PIDSteeringController:
             0,
         )
 
-        self.tracker.calcClosestPoint(self.sentinel, self.target)
+        if self.tracker.calcClosestPoint(self.sentinel, self.target) == 1:
+            self.tracker.reset(self.sentinel)
 
         # The "error" vector is the projection onto the horizontal plane (z=0) of
         # vector between sentinel and target

@@ -219,6 +219,9 @@ class ChronoSim:
             self.yaw = yaw
             self.v = v
 
+        def __str__(self):
+            return str('({}, {}, {}, {})'.format(self.x, self.y, self.yaw, self.v))
+
     def GetState(self):
         """
         Returns State:

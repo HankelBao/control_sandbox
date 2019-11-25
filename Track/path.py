@@ -15,6 +15,10 @@ class Path:
         self.k = self.curvature(self.dx, self.dy, self.ddx, self.ddy)
         self.s = self.distance(self.x, self.y)
         self.last_index = 0
+        self.last_dist = 0
+        self.track_length = self.s[-1]
+        self.times_looped = 0
+        self.length = len(self)
 
     def curvature(self, dx, dy, ddx, ddy):
         """
@@ -31,14 +35,21 @@ class Path:
     def get_arc_length(self, x, y, n=5):
         besti = self.last_index
         bestd = self.distance([x, self.x[self.last_index]],[y, self.y[self.last_index]])
-        for i in range(max(0, self.last_index-n), min(len(self)-1, self.last_index+n)):
-            temp = self.distance([x, self.x[i]],[y, self.y[i]])
+        for i in range(max(0, self.last_index-n), self.last_index+n):
+            if i >= self.length-1:
+                ii = i-self.length
+            else:
+                ii = i
+            temp = self.distance([x, self.x[ii]],[y, self.y[ii]])
             if temp < bestd:
                 bestd = temp
-                besti = i
+                besti = ii
 
         self.last_index = besti
-        return self.s[i], besti
+        if self.last_dist > self.s[besti]:
+            self.times_looped += 1
+        self.last_dist = self.s[besti]
+        return self.s[besti] + self.track_length*self.times_looped, besti
 
     def getInitLoc(self, i=0):
         return [self.hull[i][0], self.hull[i][1]]
@@ -53,6 +64,9 @@ class Path:
 
     def __getitem__(self, i):
         return self.x[i], self.y[i]
+
+    def __len__(self):
+        return len(self.x)
 
 
 class RandomPathGenerator:
