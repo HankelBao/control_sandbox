@@ -60,4 +60,4 @@ if __name__ == "__main__":
     ]
     track = Track(points)
     track.generateTrack()
-    track.plot()
+    # track.plot()

@@ -79,7 +79,7 @@ class RandomTrack:
         plot_ax = plt.axes([0.1, 0.2, 0.8, 0.75])
         seed_axes = plt.axes([0.1, 0.05, 0.8, 0.05])
         seed_slider = Slider(
-            seed_axes, "Seed", 1, 100, valinit=int(seed), valstep=1
+            seed_axes, "Seed", 0, 100, valinit=int(seed), valstep=1
         )
         plt.sca(plot_ax)
 
