@@ -35,19 +35,21 @@ try:
 except:
     raise Exception('Cannot find CHRONO_DATA_DIR environmental variable. Explanation located in chrono_sim.py file')
 
-def GetInitPose(p1, p2):
-    initLoc = chrono.ChVectorD(p1[0], p1[1], 0.5)
+def checkFile(file):
+    if not os.path.exists(file):
+        raise Exception('Cannot find {}. Explanation located in chrono_sim.py file'.format(file))
 
-    vec = chrono.ChVectorD(p2[0], p2[1], 0.5) - chrono.ChVectorD(p1[0], p1[1], 0.5)
-    theta = math.acos((chrono.ChVectorD(1,0,0)^vec)/(vec.Length()))
+def GetInitPose(p1, p2, z=0.5, reversed=0):
+    initLoc = chrono.ChVectorD(p1[0], p1[1], z)
+
+    vec = chrono.ChVectorD(p2[0], p2[1], z) - chrono.ChVectorD(p1[0], p1[1], z)
+    theta = math.atan2((vec%chrono.ChVectorD(1,0,0)).Length(),vec^chrono.ChVectorD(1,0,0))
+    if reversed:
+        theta *= -1
     initRot = chrono.ChQuaternionD()
     initRot.Q_from_AngZ(theta)
 
     return initLoc, initRot
-
-def checkFile(file):
-    if not os.path.exists(file):
-        raise Exception('Cannot find {}. Explanation located in chrono_sim.py file'.format(file))
 
 class ChronoSim:
     def __init__(self, step_size, track, irrlicht=False, initLoc=chrono.ChVectorD(0,0,0), initRot=chrono.ChQuaternionD(1,0,0,0)):
@@ -86,12 +88,6 @@ class ChronoSim:
         self.rigidtire_file = veh.GetDataPath() + "hmmwv/tire/HMMWV_RigidTire.json"
         checkFile(self.rigidtire_file)
 
-        # Initial vehicle position
-        self.initLoc = initLoc
-
-        # Initial vehicle orientation
-        self.initRot = initRot
-
         # Rigid terrain dimensions
         self.terrainHeight = 0
         self.terrainLength = 300.0  # size in X direction
@@ -106,7 +102,7 @@ class ChronoSim:
 
         self.vehicle = veh.WheeledVehicle(
             self.vehicle_file, chrono.ChMaterialSurface.NSC)
-        self.vehicle.Initialize(chrono.ChCoordsysD(self.initLoc, self.initRot))
+        self.vehicle.Initialize(chrono.ChCoordsysD(initLoc, initRot))
         self.vehicle.SetStepsize(self.step_size)
         self.vehicle.SetChassisVisualizationType(
             veh.VisualizationType_PRIMITIVES)

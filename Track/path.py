@@ -81,7 +81,7 @@ class RandomPathGenerator:
         self.pushIterations = 3
         self.angle = 110
 
-    def generatePath(self, seed=1.0):
+    def generatePath(self, seed=1.0, reversed=0):
         self.seed = seed
         random.seed(self.seed)
         self.points = []
@@ -93,6 +93,8 @@ class RandomPathGenerator:
         self.fixAngles()
         # self.normalizeSize()
         self.hull.insert(0, self.hull[len(self.hull) - 1])
+        if reversed:
+            self.hull.reverse()
         return self.hull
 
     def pushApart(self, iterations=3):

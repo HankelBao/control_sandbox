@@ -49,13 +49,13 @@ class RandomTrack:
         self.height = height
         self.thickness = thickness
 
-    def generateTrack(self, seed=1.0):
-        self.createCenterline(seed)
+    def generateTrack(self, seed=1.0, reversed=0):
+        self.createCenterline(seed,reversed)
 
-    def createCenterline(self, seed=1.0):
+    def createCenterline(self, seed=1.0, reversed=0):
         self.generator = RandomPathGenerator(
             width=self.width, height=self.width)
-        self.center = Path(self.generator.generatePath(seed=seed))
+        self.center = Path(self.generator.generatePath(seed=seed,reversed=reversed))
         left, right = [], []
         i = 0
         for t in self.center.s:

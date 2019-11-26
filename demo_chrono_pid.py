@@ -10,22 +10,23 @@ def main():
     if len(sys.argv) == 2:
         seed = int(sys.argv[1])
     else:
-        seed = 1.0
+        seed = random.randint(0,10000)
 
     # Render preferences
     matplotlib = 1
-    irrlicht = 1
+    irrlicht = 0
 
     # Chrono Simulation step size
     ch_step_size = 1e-2
     # Matplotlib Simulation step size
-    mat_step_size = 1
+    mat_step_size = 1e-2
 
     # ------------
     # Create track
     # ------------
+    reversed = random.randint(0,1)
     track = RandomTrack()
-    track.generateTrack(seed)
+    track.generateTrack(seed, reversed)
 
     # --------------------
     # Create controller(s)
@@ -40,7 +41,7 @@ def main():
     throttle_controller.SetTargetSpeed(speed=10.0)
 
     initLoc, initRot = GetInitPose(
-        [track.center.x[0], track.center.y[0]], [track.center.x[1], track.center.y[1]]
+        [track.center.x[0], track.center.y[0]], [track.center.x[1], track.center.y[1]], reversed=reversed
     )
 
     chrono = ChronoSim(
