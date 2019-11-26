@@ -7,11 +7,33 @@ import math
 import sys
 from Simulator.driver import Driver
 
-# =============================================================================
-# class Vehicle:
+# ----------------------------------------------------------------------------------------------------
+# Set data directory
 #
-chrono.SetChronoDataPath('/home/aaron/chrono/data/')
-veh.SetDataPath('/home/aaron/chrono/data/vehicle/')
+# This is useful so data directory paths don't need to be changed everytime
+# you pull from or push to github. To make this useful, make sure you perform
+# step 2, as defined for your operating system.
+#
+# For Linux or Mac users:
+#   Replace bashrc with the shell your using. Could be .zshrc.
+#   1. echo 'export CHRONO_DATA_DIR=<chrono's data directory>' >> ~/.bashrc
+#       Ex. echo 'export CHRONO_DATA_DIR=/home/user/chrono/data/' >> ~/.zshrc
+#   2. source ~/.zshrc
+#
+# For Windows users:
+#   Link as reference: https://helpdeskgeek.com/how-to/create-custom-environment-variables-in-windows/
+#   1. Open the System Properties dialog, click on Advanced and then Environment Variables
+#   2. Under User variables, click New... and create a variable as described below
+#       Variable name: CHRONO_DATA_DIR
+#       Variable value: <chrono's data directory>
+#           Ex. Variable value: C:\Users\user\chrono\data\
+# ----------------------------------------------------------------------------------------------------
+
+try:
+    chrono.SetChronoDataPath(os.environ['CHRONO_DATA_DIR'])
+    veh.SetDataPath(os.environ['CHRONO_DATA_DIR'] +'vehicle/')
+except:
+    raise Exception('Cannot find CHRONO_DATA_DIR environmental variable. Explanation located in chrono_sim.py file')
 
 def GetInitPose(p1, p2):
     initLoc = chrono.ChVectorD(p1[0], p1[1], 0.5)
@@ -22,6 +44,10 @@ def GetInitPose(p1, p2):
     initRot.Q_from_AngZ(theta)
 
     return initLoc, initRot
+
+def checkFile(file):
+    if not os.path.exists(file):
+        raise Exception('Cannot find {}. Explanation located in chrono_sim.py file'.format(file))
 
 class ChronoSim:
     def __init__(self, step_size, track, irrlicht=False, initLoc=chrono.ChVectorD(0,0,0), initRot=chrono.ChQuaternionD(1,0,0,0)):
@@ -45,16 +71,20 @@ class ChronoSim:
 
         # JSON file for vehicle model
         self.vehicle_file = veh.GetDataPath() + "hmmwv/vehicle/HMMWV_Vehicle.json"
+        checkFile(self.vehicle_file)
 
         # JSON files for terrain
         self.rigidterrain_file = veh.GetDataPath() + "terrain/RigidPlane.json"
+        checkFile(self.rigidterrain_file)
 
         # JSON file for powertrain (simple)
         self.simplepowertrain_file = veh.GetDataPath(
         ) + "generic/powertrain/SimplePowertrain.json"
+        checkFile(self.simplepowertrain_file)
 
         # JSON files tire models (rigid)
         self.rigidtire_file = veh.GetDataPath() + "hmmwv/tire/HMMWV_RigidTire.json"
+        checkFile(self.rigidtire_file)
 
         # Initial vehicle position
         self.initLoc = initLoc
