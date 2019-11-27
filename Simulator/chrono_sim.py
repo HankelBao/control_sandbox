@@ -72,20 +72,19 @@ class ChronoSim:
         self.render_steps = int(math.ceil(self.render_step_size / self.step_size))
 
         # JSON file for vehicle model
-        self.vehicle_file = veh.GetDataPath() + "hmmwv/vehicle/HMMWV_Vehicle.json"
+        self.vehicle_file = veh.GetDataPath() + os.path.join('hmmwv', 'vehicle', 'HMMWV_Vehicle.json')
         checkFile(self.vehicle_file)
 
         # JSON files for terrain
-        self.rigidterrain_file = veh.GetDataPath() + "terrain/RigidPlane.json"
+        self.rigidterrain_file = veh.GetDataPath() + os.path.join('terrain', 'RigidPlane.json')
         checkFile(self.rigidterrain_file)
 
         # JSON file for powertrain (simple)
-        self.simplepowertrain_file = veh.GetDataPath(
-        ) + "generic/powertrain/SimplePowertrain.json"
+        self.simplepowertrain_file = veh.GetDataPath() + os.path.join('generic', 'powertrain', 'SimplePowertrain.json')
         checkFile(self.simplepowertrain_file)
 
         # JSON files tire models (rigid)
-        self.rigidtire_file = veh.GetDataPath() + "hmmwv/tire/HMMWV_RigidTire.json"
+        self.rigidtire_file = veh.GetDataPath() + os.path.join('hmmwv', 'tire', 'HMMWV_RigidTire.json')
         checkFile(self.rigidtire_file)
 
         # Rigid terrain dimensions
