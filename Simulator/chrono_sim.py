@@ -31,7 +31,7 @@ from Simulator.driver import Driver
 
 try:
     chrono.SetChronoDataPath(os.environ['CHRONO_DATA_DIR'])
-    veh.SetDataPath(os.environ['CHRONO_DATA_DIR'] +'vehicle/')
+    veh.SetDataPath(os.path.join(os.environ['CHRONO_DATA_DIR'], 'vehicle', ''))
 except:
     raise Exception('Cannot find CHRONO_DATA_DIR environmental variable. Explanation located in chrono_sim.py file')
 
