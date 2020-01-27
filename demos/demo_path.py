@@ -1,6 +1,6 @@
 import sys
 
-from Track.path import RandomPathGenerator, Path
+from control_utilities.path import RandomPathGenerator, Path
 
 def plot(generator, seed=1.0):
     import matplotlib.pyplot as plt

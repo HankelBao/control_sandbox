@@ -1,6 +1,6 @@
 import sys
 
-from Track.track import RandomTrack, Track
+from control_utilities.track import RandomTrack, Track
 
 if __name__ == "__main__":
     if len(sys.argv) == 2:
@@ -60,4 +60,4 @@ if __name__ == "__main__":
     ]
     track = Track(points)
     track.generateTrack()
-    # track.plot()
+    track.plot()

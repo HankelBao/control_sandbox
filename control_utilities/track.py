@@ -1,7 +1,6 @@
-from Track.path import Path, RandomPathGenerator
+from control_utilities.path import Path, RandomPathGenerator
 import numpy as np
 import sys
-
 
 class Track:
     def __init__(self, points, thickness=5):

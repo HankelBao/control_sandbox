@@ -2,7 +2,6 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 
-
 class MatSim:
     def __init__(self, step_size, render_step_size=1./60):
         self.step_size = step_size

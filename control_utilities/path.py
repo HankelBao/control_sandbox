@@ -6,9 +6,9 @@ import numpy as np
 from scipy.interpolate import splprep, splev
 
 class Path:
-    def __init__(self, points):
+    def __init__(self, points, num_points=1000):
         tck, u = splprep(np.array(points).T, u=None, k=3, s=10.0, per=1)
-        u_new = np.linspace(u.min(), u.max(), 1000)
+        u_new = np.linspace(u.min(), u.max(), num_points)
         self.x, self.y = splev(u_new, tck, der=0)
         self.dx, self.dy = splev(u_new, tck, der=1)
         self.ddx, self.ddy = splev(u_new, tck, der=2)
@@ -31,6 +31,25 @@ class Path:
         Compute distance from beginning given two points.
         """
         return np.cumsum(np.sqrt(np.diff(x) ** 2 + np.diff(y) ** 2))
+
+    def get_index(self, x, y, n=5):
+        besti = self.last_index
+        bestd = self.distance([x, self.x[self.last_index]],[y, self.y[self.last_index]])
+        for i in range(max(0, self.last_index-n), self.last_index+n):
+            if i >= self.length-1:
+                ii = i-self.length
+            else:
+                ii = i
+            temp = self.distance([x, self.x[ii]],[y, self.y[ii]])
+            if temp < bestd:
+                bestd = temp
+                besti = ii
+
+        self.last_index = besti
+        if self.last_dist > self.s[besti]:
+            self.times_looped += 1
+        self.last_dist = self.s[besti]
+        return besti
 
     def get_arc_length(self, x, y, n=5):
         besti = self.last_index
