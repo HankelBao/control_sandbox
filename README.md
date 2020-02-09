@@ -34,7 +34,7 @@ cmake \
   -DENABLE_MODULE_IRRLICHT:BOOL=ON \
   -DENABLE_MODULE_PYTHON:BOOL=ON \
   -DPYTHON_EXECUTABLE:FILEPATH=/usr/local/bin/python3 \
-  -DPYTHON_INCLUDE_PATH:FILEPATH=/usr/local/Frameworks/Python.framework/Versions/3.7/include/python3.7m \
+  -DPYTHON_INCLUDE_DIR:FILEPATH=/usr/local/Frameworks/Python.framework/Versions/3.7/include/python3.7m \
   -DPYTHON_LIBRARY:FILEPATH=/usr/local/Frameworks/Python.framework/Versions/3.7/lib/libpython3.7.dylib \
   .. \
   && make -j12
