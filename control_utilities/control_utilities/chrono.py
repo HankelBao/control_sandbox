@@ -36,9 +36,12 @@ except:
     raise Exception('Cannot find CHRONO_DATA_DIR environmental variable. Explanation located in chrono_sim.py file')
 
 def GetInitPose(p1, p2, z=0.5, reversed=0):
-    initLoc = chrono.ChVectorD(p1[0], p1[1], z)
+    p1 = chrono.ChVectorD(p1[0], p1[1], z)
+    p2 = chrono.ChVectorD(p2[0], p2[1], z)
 
-    vec = chrono.ChVectorD(p2[0], p2[1], 0.5) - chrono.ChVectorD(p1[0], p1[1], z)
+    initLoc = p1
+
+    vec = p2 - p1
     theta = math.atan2((vec%chrono.ChVectorD(1,0,0)).Length(),vec^chrono.ChVectorD(1,0,0))
     if reversed:
         theta *= -1

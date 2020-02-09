@@ -16,13 +16,8 @@ def plot(generator, seed=1.0):
     def update(val):
         path = Path(generator.generatePath(seed=seed_slider.val))
         plt.cla()
-        x = [point[0] for point in generator.hull]
-        y = [point[1] for point in generator.hull]
-        xx = [point[0] for point in generator.points]
-        yy = [point[1] for point in generator.points]
-        plt.plot(x, y)
-        plt.scatter(xx, yy)
-        plt.plot(path.x, path.y)
+
+        path.plot(color='-r', show=False)
 
     update(seed)
 
@@ -38,5 +33,5 @@ if __name__ == "__main__":
     else:
         seed = 1.0
 
-    generator = RandomPathGenerator(width=100, height=100)
+    generator = RandomPathGenerator(x_max=100, y_max=100)
     plot(generator, seed)

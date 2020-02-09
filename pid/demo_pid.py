@@ -36,7 +36,7 @@ def main():
     # --------------------
     steering_controller = PIDSteeringController(track.center)
     steering_controller.SetGains(Kp=0.4, Ki=0, Kd=0.25)
-    steering_controller.SetLookAheadDistance(dist=5.0)
+    steering_controller.SetLookAheadDistance(dist=.5)
     # steering_controller.initTracker(track.center)
 
     throttle_controller = PIDThrottleController()

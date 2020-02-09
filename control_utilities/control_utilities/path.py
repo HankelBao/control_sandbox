@@ -5,20 +5,66 @@ import numpy as np
 
 from scipy.interpolate import splprep, splev
 
-class Path:
+import pychrono as chrono
+
+class Path(chrono.ChBezierCurve):
+    """
+    Path class that contains ChBezierCurve and ChBezierCurveTracker and some useful utilities.
+
+    ...
+
+    Attributes
+    ----------
+    points : vector_ChVectorD
+        points passed into the class. To be interpolated along the bezier curve
+    num_points : int
+        number of points that should be evaluated along the path
+    interval : float
+        stepwise value that will be used when iterated over path while evaluating
+    tracker : ChBezierCurveTracker
+        tracker used to perfrom calculations on path
+
+    Methods
+    -------
+    calcClosestPoint(pos)
+        calculates the closest point on the path from a pos
+    calcKnotIndex(t)
+        Calculates the indice of the knot point at the specified t value. ChBezierCurve requires
+        a knot index when evaluating the position, first and second derivatives.
+    eval(i)
+        wraps ChBezierCurve.eval func
+    evalD(i)
+        wraps ChBezierCurve.evalD func
+    evalDD(i)
+        wraps ChBezierCurve.evalDD func
+    plot(color, show=True)
+        plots the path using matplotlib
+
+    Static Methods
+    --------------
+    calcPose(p1, p2, reversed=False):
+        calculates pose (position and orientation) at a point along the path
+
+    """
     def __init__(self, points, num_points=1000):
-        tck, u = splprep(np.array(points).T, u=None, k=3, s=10.0, per=1)
+        points = np.array(points)
+        tck, u = splprep(points.T, s=0.0, per=True)
         u_new = np.linspace(u.min(), u.max(), num_points)
         self.x, self.y = splev(u_new, tck, der=0)
         self.dx, self.dy = splev(u_new, tck, der=1)
         self.ddx, self.ddy = splev(u_new, tck, der=2)
         self.k = self.curvature(self.dx, self.dy, self.ddx, self.ddy)
         self.s = self.distance(self.x, self.y)
+
+        self.points = []
+        for x,y in zip(self.x, self.y):
+            self.points.append(chrono.ChVectorD(x,y,.5))
+
         self.last_index = 0
         self.last_dist = 0
         self.track_length = self.s[-1]
         self.times_looped = 0
-        self.length = len(self)
+        self.length = len(self.x)
 
     def curvature(self, dx, dy, ddx, ddy):
         """
@@ -32,15 +78,18 @@ class Path:
         """
         return np.cumsum(np.sqrt(np.diff(x) ** 2 + np.diff(y) ** 2))
 
-    def get_index(self, x, y, n=5):
+    def calcIndex(self, pos, n=10):
+        """
+        Calculates the index of the closest point on the path
+        """
         besti = self.last_index
-        bestd = self.distance([x, self.x[self.last_index]],[y, self.y[self.last_index]])
+        bestd = self.distance([pos.x, self.x[self.last_index]],[pos.y, self.y[self.last_index]])
         for i in range(max(0, self.last_index-n), self.last_index+n):
             if i >= self.length-1:
                 ii = i-self.length
             else:
                 ii = i
-            temp = self.distance([x, self.x[ii]],[y, self.y[ii]])
+            temp = self.distance([pos.x, self.x[ii]],[pos.y, self.y[ii]])
             if temp < bestd:
                 bestd = temp
                 besti = ii
@@ -51,209 +100,264 @@ class Path:
         self.last_dist = self.s[besti]
         return besti
 
-    def get_arc_length(self, x, y, n=5):
-        besti = self.last_index
-        bestd = self.distance([x, self.x[self.last_index]],[y, self.y[self.last_index]])
-        for i in range(max(0, self.last_index-n), self.last_index+n):
-            if i >= self.length-1:
-                ii = i-self.length
-            else:
-                ii = i
-            temp = self.distance([x, self.x[ii]],[y, self.y[ii]])
-            if temp < bestd:
-                bestd = temp
-                besti = ii
+    def calcClosestPoint(self, pos):
+        """'
+        Determines closest point on the path from a pos
+        """
+        i = self.calcIndex(pos)
+        return self.points[i]
 
-        self.last_index = besti
-        if self.last_dist > self.s[besti]:
-            self.times_looped += 1
-        self.last_dist = self.s[besti]
-        return self.s[besti] + self.track_length*self.times_looped, besti
+    def calcDistance(self, pos):
+        """
+        Determines the distance progressed along the path
+        """
+        i = self.calcIndex(pos)
+        return self.s[i]
 
-    def getInitLoc(self, i=0):
-        return [self.hull[i][0], self.hull[i][1]]
+    def calcCurvature(self, pos):
+        """
+        Determines the curvature at the closest point along the path
+        """
+        i = self.calcIndex(pos)
+        return self.s[i]
 
-    def getInitRot(self, i=0):
-        v1 = [self.hull[i + 1][0] - self.hull[i][0],
-              self.hull[i + 1][1] - self.hull[i][1]]
-        v2 = [-1, 0]
-        ang = math.acos(np.dot(v1, v2) /
-                        (np.linalg.norm(v1) * np.linalg.norm(v2)))
-        return ang + np.deg2rad(180)
+    def calcPosition(self, s):
+        """
+        Determines the position and curvature based off the current progression along the path
+        """
+        array = np.asarray(self.s)
+        i = (np.abs(array-s)).argmin()
 
-    def __getitem__(self, i):
-        return self.x[i], self.y[i]
+        return self.points[i], self.k[i]
 
-    def __len__(self):
-        return len(self.x)
+    def plot(self, color, show=True):
+        """Plots path using matplotlib
 
+        Parameters
+        ----------
+        color : str
+            color formating str for matplotlib
+        show : bool, optional
+            if plot.show() be called
+        """
+        import matplotlib.pyplot as plt
 
-class RandomPathGenerator:
-    def __init__(self, width, height):
-        self.width = width
-        self.height = height
-        self.max_distance = 1000
-        self.isLooping = True
-        self.maxDisplacement = 10
-        self.minDistance = 20
-        self.difficulty = 5
-        self.pushIterations = 3
-        self.angle = 110
+        plt.plot(self.x,self.y, color)
+
+        if show:
+            plt.show()
+
+    @staticmethod
+    def calcPose(self, p1, p2, reversed=False):
+        """Calculates pose (position and orientation) at a point along the path
+
+        Parameters
+        ----------
+        p1 : ChVectorD
+            first point to use
+        p2 : ChVectorD
+            second point to use
+        reversed : bool, optional
+            if orientation should be flipped
+
+        Returns
+        -------
+        pos : ChVectorD
+            the position at the desired point
+        rot : ChQuaternionD
+            the orientation at the desired point
+
+        """
+        pos = p1
+
+        vec = p2 - p1
+        theta = math.atan2((vec%chrono.ChVectorD(1,0,0)).Length(),vec^chrono.ChVectorD(1,0,0))
+        if reversed:
+            theta *= -1
+        rot = chrono.ChQuaternionD()
+        rot.Q_from_AngZ(theta)
+
+        return pos, rot
+
+class RandomPathGenerator():
+    """
+    RandomPathGenerator class that generates a random path using convex hulls
+
+    ...
+
+    Attributes
+    ----------
+    x_max : ChBezierCurve
+        maximum x value for the randomly generated path
+    y_max : RandomPathGenerator
+        maximum y value for the randomly generated path
+    num_points : int
+        number of points randomly generated at the very beginning
+    min_distance : int
+        minimum distance between points when randomly generated
+    min_angle : int
+        minimum angle between three points before a correction heuristic is performed
+    hull : vector_ChVectorD
+        the convex hull that is used to generate the random path
+
+    Methods
+    -------
+    generatePath(seed=1.0, reversed=0)
+        generate a random track using a convex hull
+    generatePoints(z=0.5)
+        generates a set of random points
+    calcConvexHull(points)
+        calculates the convex hull that around the random points generated
+    fixPoints()
+        TODO :: fixes overlapping and discontinuity issues along the path and track
+        not entirely sure why it works
+    calcAngle(v1, v2)
+        calculates the angle between two vectors
+
+    """
+    def __init__(self, x_max, y_max, num_points=25, min_distance=17, min_angle=120):
+        """
+        Parameters
+        ----------
+        x_max : ChBezierCurve
+            maximum x value for the randomly generated path
+        y_max : RandomPathGenerator
+            maximum y value for the randomly generated path
+        num_points : int
+            number of points randomly generated at the very beginning
+        min_distance : int
+            minimum distance between points when randomly generated
+        min_angle : int
+            minimum angle between three points before a correction heuristic is performed
+
+        """
+        self.x_max = x_max
+        self.y_max = y_max
+        self.num_points = num_points
+        self.min_distance = min_distance
+        self.min_angle = min_angle
 
     def generatePath(self, seed=1.0, reversed=0):
-        self.seed = seed
-        random.seed(self.seed)
-        self.points = []
-        self.hull = []
-        self.generatePoints()
-        self.computeConvexHull(self.points)
-        self.pushApart()
-        self.displace()
-        self.fixAngles()
-        # self.normalizeSize()
-        self.hull.insert(0, self.hull[len(self.hull) - 1])
+        """Caller method that generates a random path through other method calls
+
+        Parameters
+        ----------
+        seed : int, optional
+            random seed to be used in pythons pseudo random functions
+            (See: https://docs.python.org/3/library/random.html)
+        reversed : int, optional
+            used to reverse the direction the path is created
+
+        Returns
+        -------
+        self.hull : vector_ChVectorD
+            the random generated path in the form of a vector of points
+        """
+        random.seed(seed)
+        self.hull = self.calcConvexHull(self.generatePoints())
+        # self.fixPoints()
+        self.hull.insert(0, self.hull[-1])
         if reversed:
             self.hull.reverse()
         return self.hull
 
-    def pushApart(self, iterations=3):
-        for _ in range(iterations):
-            for i in range(len(self.hull)):
-                for j in range(len(self.hull)):
-                    hl = (
-                        (self.hull[i][0] - self.hull[j][0]) ** 2
-                        + (self.hull[i][1] - self.hull[j][1]) ** 2
-                    ) ** 1 / 2
-                    if hl == 0:
-                        hl = 0.1
+    def generatePoints(self, z=.5):
+        """Generates a set of random points
 
-                    if hl < self.minDistance:
-                        hx = self.hull[j][0] - self.hull[i][0]
-                        hy = self.hull[j][1] - self.hull[i][1]
-                        hx /= hl
-                        hy /= hl
-                        diff = self.minDistance - hl
-                        hx *= diff
-                        hy *= diff
-                        self.hull[j][0] += hx
-                        self.hull[j][1] += hy
-                        self.hull[i][0] -= hx
-                        self.hull[i][1] -= hy
+        Parameters
+        ----------
+        z : int, optional
+            the height that each point should be off the terrain
 
-    def normalizeSize(self):
-        maxX = 0
-        maxY = 0
-        for i in range(len(self.hull)):
-            if abs(self.hull[i][0]) > maxX:
-                maxX = abs(self.hull[i][0])
+        Return
+        ------
+        points : [ChVectorD]
+            the random ChVectorD points generated by the function in a python list
 
-            if abs(self.hull[i][1]) > maxY:
-                maxY = abs(self.hull[i][1])
+        """
+        def checkDistances(points, point):
+            """Checks if the distance is greater than the minimum distance"""
+            for p in points:
+                if math.hypot(*(np.array(p)-np.array(point))) < self.min_distance:
+                    return False
+            return True
 
-        for i in range(len(self.hull)):
-            self.hull[i][0] = (self.hull[i][0] / maxX) * self.width / 2
-            self.hull[i][1] = (self.hull[i][1] / maxY) * self.height / 2
+        points = []
+        for i in range(self.num_points):
+            x = (random.random() - 0.5) * self.x_max
+            y = (random.random() - 0.5) * self.y_max
+            point = [x,y]
+            if checkDistances(points, point):
+                points.append(point)
 
-    def generatePoints(self):
-        pointCount = 20
-        for i in range(pointCount):
-            x = (random.random() - 0.5) * self.width
-            y = (random.random() - 0.5) * self.height
-            self.points.append([x, y])
+        return np.array(points)
 
-    def displace(self):
-        newHull = []
-        for i in range(len(self.hull)):
-            dispLen = (random.random() ** self.difficulty) * self.maxDisplacement
-            disp = [0, 1]
-            disp = self.rotateVector(disp, random.random() * 360)
-            disp = [dispLen * disp[0], dispLen * disp[1]]
-            newHull.append(self.hull[i])
-            point = self.hull[i]
-            point2 = self.hull[(i + 1) % len(self.hull)]
-            x = (point[0] + point2[0]) / 2 + disp[0]
-            y = (point[1] + point2[1]) / 2 + disp[1]
-            newHull.append([x, y])
+    def calcConvexHull(self, points):
+        """Calculates the convex hull that around the random points generated
 
-        self.hull = newHull
+        Parameters
+        ----------
+        points : [ChVectorD]
+            array of ChVectorD's that are used to generate a convex hull around
 
-    def rotateVector(self, v, degrees):
-        radians = degrees * (math.pi / 180)
-        sin = math.sin(radians)
-        cos = math.cos(radians)
+        Returns
+        -------
+        [ChVectorD]
+            the convex hull
+        """
 
-        tx = v[0]
-        ty = v[1]
+        points = sorted(points, key=lambda item : item[0])
 
-        return [cos * tx - sin * ty, sin * tx + cos * ty]
-
-    def fixAngles(self, iterations=10):
-        for _ in range(iterations):
-            for i in range(len(self.hull)):
-                previous = len(self.hull) - 1 if i - 1 < 0 else i - 1
-                next = (i + 1) % len(self.hull)
-                px = self.hull[i][0] - self.hull[previous][0]
-                py = self.hull[i][1] - self.hull[previous][1]
-                pl = (px * px + py * py) ** 1 / 2
-                px /= pl
-                py /= pl
-
-                nx = self.hull[i][0] - self.hull[next][0]
-                ny = self.hull[i][1] - self.hull[next][1]
-                nx = -nx
-                ny = -ny
-                nl = (nx * nx + ny * ny) ** 1 / 2
-                nx /= nl
-                ny /= nl
-                # I got a vector going to the next and to the previous points, normalised.
-
-                a = math.atan2(
-                    px * ny - py * nx, px * nx + py * ny
-                )  # perp dot product between the previous and next point.
-
-                if abs(a * (180 / math.pi)) <= self.angle:
-                    continue
-
-                nA = self.angle * self.sign(a) * (math.pi / 180)
-                diff = nA - a
-                cos = math.cos(diff)
-                sin = math.sin(diff)
-                newX = nx * cos - ny * sin
-                newY = nx * sin + ny * cos
-                newX *= nl
-                newY *= nl
-                self.hull[next][0] = self.hull[i][0] + newX
-                self.hull[next][1] = self.hull[i][1] + newY
-                # I got the difference between the current angle and 100degrees, and built a new vector that puts the next point at 100 degrees.
-
-    def sign(self, num):
-        return math.copysign(1, num)
-
-    def computeConvexHull(self, points):
-        points.sort()
         upper = points[0:2]		# Initialize upper part
+
         # Compute the upper part of the hull
         for i in range(2, len(points)):
             upper.append(points[i])
-            while len(upper) > 2 and self.isLeft(upper[-1], upper[-2], upper[-3]):
+            while len(upper) > 2 and self.calcAngle(upper[-2] - upper[-1], upper[-2] - upper[-3]) > 0:
                 del upper[-2]
 
         lower = list(reversed(points[-2:]))  # Initialize the lower part
         # Compute the lower part of the hull
         for i in range(len(points) - 3, -1, -1):
             lower.append(points[i])
-            while len(lower) > 2 and self.isLeft(lower[-1], lower[-2], lower[-3]):
+            while len(lower) > 2 and self.calcAngle(lower[-2] - lower[-1], lower[-2] - lower[-3]) > 0:
                 del lower[-2]
         del lower[0]
         del lower[-1]
-        self.hull = upper + lower		# Build the full hull
+        return upper + lower		# Build the full hull
 
-    def isLeft(self, p1, p2, p3):
-        return (p3[1] - p1[1]) * (p2[0] - p1[0]) < (p2[1] - p1[1]) * (p3[0] - p1[0])
+    def fixPoints(self):
+        """TODO :: fixes overlapping and discontinuity issues along the path and track
+        not entirely sure why it works
+        """
+        for _ in range(100):
+            for i in range(len(self.hull)):
+                p1 = self.hull[i-1]
+                p2 = self.hull[i]
+                p3 = self.hull[i+1] if i < len(self.hull) - 1 else self.hull[0]
 
-    def GetPath(self, z=0.5):
-        hull = []
-        for point in self.hull:
-            point.append(z)
-            hull.append(point)
-        return hull
+                v1 = p2-p1
+                v2 = p2-p3
+
+                angle = self.calcAngle(v1, v2)
+                sign = 1 if 1-(angle<=0) else -1
+                if abs(angle) < self.min_angle:
+                    p1_len = math.hypot(*p1)
+                    p1 *= (math.hypot(*p1) + 1) / math.hypot(*p1)
+
+    def calcAngle(self, v1, v2):
+        """Calculates the angle between two vectors
+
+        Parameters
+        ----------
+        v1 : ChVectorD
+            vector 1
+        v2 : ChVectorD
+            vector 2
+
+        Returns
+        -------
+        float
+            angle between v1 and v2 in degrees
+        """
+        return math.degrees(math.atan2(v1[0] * v2[1] - v1[1] * v2[0], v1[0] * v2[0] + v1[1] * v2[1]))

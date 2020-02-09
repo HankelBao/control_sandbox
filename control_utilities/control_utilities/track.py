@@ -2,76 +2,158 @@ from control_utilities.path import Path, RandomPathGenerator
 import numpy as np
 import sys
 
-class Track:
-    def __init__(self, points, thickness=5):
-        self.points = points
-        self.center = Path(points)
-        self.thickness = thickness
+import pychrono as chrono
 
-    def generateTrack(self):
+class Track:
+    """
+    Track class that has a center, left and right path
+
+    ...
+
+    Attributes
+    ----------
+    center : ChBezierCurve
+        the path object that describes the centerline
+    right : ChBezierCurve
+        the path object that describes the right boundary
+    left : ChBezierCurve
+        the path object that describes the left boundary
+    width : int
+        constant width of the track
+    num_points : int
+        number of points to interpolate along path
+    interval : float
+        constant factor to interpolate along path from [0,1]
+
+    Methods
+    -------
+    generateTrack()
+        generates the left and right boundaries from the centerline
+    plot(show=True)
+        plots the track using matplotlib
+
+    """
+    def __init__(self, center, width=5, num_points=1000):
+        """
+        Parameters
+        ----------
+        center : ChBezierCurve
+            the centerline
+        width : int, optional
+            constant distance from the centerline to each boundary
+        num_points : int, optional
+            num points to interpolate along path
+        """
+        self.center = Path(center, num_points)
+        self.width = width
+        self.num_points = num_points
+
+    def generateTrack(self, z=0.5):
+        """Generates the left and right boundaries from the centerline"""
         left, right = [], []
+
         i = 0
         for t in self.center.s:
             ix, iy = self.center.x[i], self.center.y[i]
             dx, dy = self.center.dx[i], self.center.dy[i]
             len = np.linalg.norm(np.array([dx,dy]))
             dx, dy = dx / len, dy / len
-            dx, dy = dx * self.thickness, dy * self.thickness
+            dx, dy = dx * self.width, dy * self.width
             left.append([ix-dy, iy+dx])
             right.append([ix+dy, iy-dx])
             i+=1
+
         if left[0] != left[-1] and right[0] != right[-1]:
             left.append(left[0])
             right.append(right[0])
+
         self.left = Path(left)
         self.right = Path(right)
 
     def plot(self, show=True):
-        import matplotlib.pyplot as plt
+        """Plots track using matplotlib
 
-        # from scipy.interpolate import interp1d
-        # m = interp1d([min(abs(self.center.k)), max(abs(self.center.k))],[0,1])
-        # color = [str(m(abs(k))) for k in self.center.k]
-        # plt.scatter(self.center.x, self.center.y, c=color, cmap='Blues')
-        # color = [str((abs(s/m))) for s in self.center.s]
-        # plt.scatter(self.center.x[:-1], self.center.y[:-1], c=color, cmap='Reads')
-        plt.plot(self.center.x, self.center.y, '-r')
-        plt.plot(self.left.x, self.left.y)
-        plt.plot(self.right.x, self.right.y)
+        Parameters
+        ----------
+        show : bool, optional
+            if plot.show() be called
+        """
+        import matplotlib.pyplot as plt
+        self.center.plot(color='-r', show=False)
+        self.right.plot(color='-k', show=False)
+        self.left.plot(color='-k', show=False)
         if show:
             plt.show()
 
 
-class RandomTrack:
-    def __init__(self, width=100, height=100, thickness=2):
+class RandomTrack(Track):
+    """
+    RandomTrack class that generates a Track object from a random centerline
+
+    ...
+
+    Attributes
+    ----------
+    center : ChBezierCurve
+        the path object that describes the centerline
+    generator : RandomPathGenerator
+        generates a random path given a certain seed value
+    x_max : int
+        maximum x value for the randomly generated path
+    y_max : int
+        maximum y value for the randomly generated path
+    width : int
+        constant distance from the centerline to the outer boundaries
+
+    Methods
+    -------
+    generateTrack()
+        generate track from a random centerline
+    plot(show=True)
+        plots the track using matplotlib and adds sliders to interact with seed of random
+
+    """
+    def __init__(self, x_max=100, y_max=100, width=5):
+        """
+        Parameters
+        ----------
+        x_max : int, optional
+            maximum x value for the randomly generated path
+        y_max : int, optional
+            maximum y value for the randomly generated path
+        width : int, optional
+            constant distance from the centerline to the outer boundaries
+        """
+        self.x_max = x_max
+        self.y_max = y_max
         self.width = width
-        self.height = height
-        self.thickness = thickness
+        self.generator = RandomPathGenerator(x_max=self.x_max, y_max=self.y_max)
 
     def generateTrack(self, seed=1.0, reversed=0):
-        self.createCenterline(seed,reversed)
+        """Generates Track object from new random centerline path
 
-    def createCenterline(self, seed=1.0, reversed=0):
-        self.generator = RandomPathGenerator(
-            width=self.width, height=self.width)
-        self.center = Path(self.generator.generatePath(seed=seed,reversed=reversed))
-        left, right = [], []
-        i = 0
-        for t in self.center.s:
-            ix, iy = self.center.x[i], self.center.y[i]
-            dx, dy = self.center.dx[i], self.center.dy[i]
-            len = np.linalg.norm(np.array([dx,dy]))
-            dx, dy = dx / len, dy / len
-            dx, dy = dx * self.thickness, dy * self.thickness
-            left.append([ix-dy, iy+dx])
-            right.append([ix+dy, iy-dx])
-            i+=1
-        left.append(left[0])
-        right.append(right[0])
-        self.left = Path(left)
-        self.right = Path(right)
+        Parameters
+        ----------
+        seed : int, optional
+            random seed to be used in pythons pseudo random functions
+            (See: https://docs.python.org/3/library/random.html)
+        reversed : int, optional
+            used to reverse the direction the path is created
+        """
+        self.points = self.generator.generatePath(seed=seed,reversed=reversed)
+        Track.__init__(self, self.points)
+        super(RandomTrack, self).generateTrack()
 
     def plot(self, seed=1.0, show=True):
+        """Plots track using matplotlib and has interactive sliders
+
+        Parameters
+        ----------
+        seed : int, optional
+            seed to be used for random function
+        show : bool, optional
+            if plot.show() be called
+        """
         import matplotlib.pyplot as plt
         from matplotlib.widgets import Slider
 
@@ -85,16 +167,7 @@ class RandomTrack:
         def update(val):
             self.generateTrack(seed=val)
             plt.cla()
-            # from scipy.interpolate import interp1d
-            # m = interp1d([min(abs(self.center.k)), max(abs(self.center.k))],[0,1])
-            # color = [str(m(abs(k))) for k in self.center.k]
-            # plt.scatter(self.center.x, self.center.y, c=color, cmap='Blues')
-            # m = max(self.center.s)
-            # color = [str((abs(s/m))) for s in self.center.s]
-            # plt.scatter(self.center.x[:-1], self.center.y[:-1], c=color, cmap='Blues')
-            plt.plot(self.center.x, self.center.y)
-            plt.plot(self.left.x, self.left.y)
-            plt.plot(self.right.x, self.right.y)
+            super(RandomTrack, self).plot(show=False)
 
         update(seed)
 

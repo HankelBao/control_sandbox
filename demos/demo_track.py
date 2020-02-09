@@ -1,6 +1,9 @@
 import sys
 
 from control_utilities.track import RandomTrack, Track
+from control_utilities.path import Path
+
+import pychrono as chrono
 
 if __name__ == "__main__":
     if len(sys.argv) == 2:

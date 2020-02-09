@@ -37,10 +37,9 @@ class MatSim:
         else:
             self.annotation.set_text(str)
     def plot_track(self, track, trackcolor="-b"):
-        self.center = plt.plot(track.center.x, track.center.y, '-r')
-        self.left = plt.plot(track.left.x, track.left.y)
-        self.right = plt.plot(track.right.x, track.right.y)
-        self.first = plt.plot(track.center.x[0], track.center.y[0], '.k')
+        track.center.plot(color='-r', show=False)
+        track.left.plot(color='-k', show=False)
+        track.right.plot(color='-k', show=False)
 
     def plot_car(self, veh, state, cabcolor="-r", truckcolor="-k"):  # pragma: no cover
 
