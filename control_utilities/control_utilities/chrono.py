@@ -57,13 +57,14 @@ def checkFile(file):
 class ChronoSim:
     def __init__(self, step_size, track, irrlicht=False, initLoc=chrono.ChVectorD(0,0,0), initRot=chrono.ChQuaternionD(1,0,0,0)):
         # Vehicle parameters for matplotlib
-        self.length = 4.5  # [m]
-        self.width = 2.0  # [m]
-        self.backtowheel = 1.0  # [m]
-        self.wheel_len = 0.3  # [m]
-        self.wheel_width = 0.2  # [m]
-        self.tread = 0.7  # [m]
-        self.wb = 2.5  # [m]
+        f = 2
+        self.length = 4.5  * f# [m]
+        self.width = 2.0  * f# [m]
+        self.backtowheel = 1.0  * f# [m]
+        self.wheel_len = 0.3  * f# [m]
+        self.wheel_width = 0.2  * f# [m]
+        self.tread = 0.7  * f# [m]
+        self.wb = 2.5  * f# [m]
 
         # Chrono parameters
         self.step_size = step_size

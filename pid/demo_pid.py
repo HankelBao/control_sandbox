@@ -15,8 +15,8 @@ def main():
         seed = random.randint(0,100)
 
     # Render preferences
-    matplotlib = 0
-    irrlicht = 1
+    matplotlib = 1
+    irrlicht = 0
 
     # Chrono Simulation step size
     ch_step_size = 1e-2
@@ -36,7 +36,7 @@ def main():
     # --------------------
     steering_controller = PIDSteeringController(track.center)
     steering_controller.SetGains(Kp=0.4, Ki=0, Kd=0.25)
-    steering_controller.SetLookAheadDistance(dist=.5)
+    steering_controller.SetLookAheadDistance(dist=5)
     # steering_controller.initTracker(track.center)
 
     throttle_controller = PIDThrottleController()

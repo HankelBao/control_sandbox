@@ -10,19 +10,19 @@ class MatSim:
         self.render_step_size = render_step_size  # FPS = 60
         self.render_steps = int(math.ceil(self.render_step_size / self.step_size))
         self.step_number = 0
+        self.track_plotted = False
 
     def close(self):
         plt.close()
 
     def plot(self, track, veh_model):
-        # plt.cla()
-
         if self.step_number % self.render_steps == 0:
-            if not hasattr(self, 'center'):
+            if not self.track_plotted:
                 self.plot_track(track)
+                self.track_plotted = True
             self.plot_car(veh_model, veh_model.GetState())
             self.plot_text(veh_model)
-            plt.pause(0.00001)
+            plt.pause(.0000001)
         if len(plt.get_fignums()) == 0:
             return -1
 
