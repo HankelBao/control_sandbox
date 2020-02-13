@@ -8,13 +8,14 @@ import random
 import sys
 
 def main():
+    global first, time
     if len(sys.argv) == 2:
         seed = int(sys.argv[1])
     else:
         seed = random.randint(0,100)
 
     # Render preferences
-    matplotlib = 1
+    matplotlib = 0
     irrlicht = 1
 
     # Chrono Simulation step size
@@ -27,17 +28,19 @@ def main():
     # ------------
     reversed = random.randint(0,1)
     track = RandomTrack()
-    track.generateTrack(seed, reversed)
+    track.generateTrack(seed=seed, reversed=reversed)
+    print('Using seed :: {}'.format(seed))
 
     # --------------------
     # Create controller(s)
     # --------------------
     mpc_controller = MPCController()
 
-    initLoc, initRot = GetInitPose(
-        [track.center.x[0], track.center.y[0]], [track.center.x[1], track.center.y[1]], reversed=reversed
-    )
+    # Get initial pose (position and orientation)
+    # TODO: Replace within some utilities file
+    initLoc, initRot = GetInitPose([track.center.x[0],track.center.y[0]], [track.center.x[1],track.center.y[1]], reversed=reversed)
 
+    # Create the chrono simulator wrapper object
     chrono = ChronoSim(
         step_size=ch_step_size,
         track=track,
@@ -48,11 +51,12 @@ def main():
 
     mpc_controller.UpdateState(chrono)
 
+    # Create matplotlib simulator
     mat = MatSim(mat_step_size)
 
     ch_time = mat_time = 0
     while True:
-        # Update controllers
+        # Update controller
         throttle, steering, braking = mpc_controller.Advance(ch_step_size, chrono)
 
         chrono.driver.SetTargetSteering(steering)
@@ -72,9 +76,10 @@ def main():
 
         ch_time += ch_step_size
 
+        if ch_time > 50:
+            break
     print("Exited")
     pass
-
 
 if __name__ == "__main__":
     main()

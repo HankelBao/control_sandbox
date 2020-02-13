@@ -7,25 +7,41 @@ from scipy.interpolate import splprep, splev
 
 import pychrono as chrono
 
-class Path(chrono.ChBezierCurve):
+class Path():
     """
-    Path class that contains ChBezierCurve and ChBezierCurveTracker and some useful utilities.
+    Path class that generates a spline through the provided points. Spline is defined by a discrete number of points.
 
     ...
 
     Attributes
     ----------
+    x, y : 1D lists
+        lists that hold the x and y values of the path at each point
+    dx, dy : 1D lists
+        lists that hold the dx and dy values of the path at each point
+    ddx, ddy : 1D lists
+        lists that hold the ddx and ddy values of the path at each point
+    k, s : 1D lists
+        lists that hold the curvature and distance along the path at each point
     points : vector_ChVectorD
-        points passed into the class. To be interpolated along the bezier curve
-    num_points : int
-        number of points that should be evaluated along the path
-    interval : float
-        stepwise value that will be used when iterated over path while evaluating
-    tracker : ChBezierCurveTracker
-        tracker used to perfrom calculations on path
+        points passed into the class but as ChVectorD's
+    last_index : int
+        index of the most recent calculate index
+        see calcIndex()
+    last_dist : float
+        progression along the path from the most recent calculation
+        see calcIndex()
+    track_length : float
+        variable defined as the length of the track approximated as the linear distance between each point
+    times_looped : int
+        times the track has been looped. For progression purposes
+    length : int
+        number of points defined by the spline approximation
 
     Methods
     -------
+    curvature(dx, dy, ddx, ddy)
+        
     calcClosestPoint(pos)
         calculates the closest point on the path from a pos
     calcKnotIndex(t)

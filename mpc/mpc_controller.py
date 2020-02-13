@@ -1,3 +1,5 @@
+import pychrono as ch
+
 class MPCController:
     def __init__(self):
         pass
@@ -20,27 +22,32 @@ class MPCController:
         chrono.driver.GetSteering()
         chrono.driver.GetBraking()
 
+        pos = ch.ChVectorD(self.state[0], self.state[1], .5)
+
         # Get closest point on centerline
-        index = chrono.track.center.get_index(self.state[0], self.state[1])
+        pos = chrono.track.center.calcClosestPoint(pos)
 
         # Get current progression along centerline
-        # distance, index = chrono.track.center.get_arc_length(self.state[0], self.state[1]) or
-        distance = chrono.track.center.s[index]
-        print(distance)
+        distance = chrono.track.center.calcDistance(pos)
+        # print(distance)
+
         # Get current curvature values of centerline
-        curvature = chrono.track.center.k[index]
-        print(curvature)
+        curvature = chrono.track.center.calcCurvature(pos)
+        # print(curvature)
+
+        # Get index of the closest point on the centerline
+        index = chrono.track.center.calcIndex(pos)
 
         # Get derivative of outer boundaries
         left_dx, left_dy = chrono.track.left.dx[index], chrono.track.left.dy[index]
-        print([left_dx, left_dy])
+        # print([left_dx, left_dy])
         right_dx, right_dy = chrono.track.right.dx[index], chrono.track.right.dy[index]
-        print([right_dx, right_dy])
+        # print([right_dx, right_dy])
         # Can also get second derivative
         left_ddx, left_ddy = chrono.track.left.ddx[index], chrono.track.left.ddy[index]
-        print([left_ddx, left_ddy])
+        # print([left_ddx, left_ddy])
         right_ddx, right_ddy = chrono.track.right.ddx[index], chrono.track.right.ddy[index]
-        print([right_ddx, right_ddy])
+        # print([right_ddx, right_ddy])
 
         self.UpdateState(chrono)
 

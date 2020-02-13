@@ -28,9 +28,9 @@ setup(
     #     "Topic :: Utilities",
     #     "License :: OSI Approved :: BSD License",
     # ],
-    # install_requires=[
-    #     'matplotlib',
-    #     'numpy',
-    #     'scipy',
-    # ]
+    install_requires=[
+        'matplotlib',
+        'numpy',
+        'scipy',
+    ]
 )
