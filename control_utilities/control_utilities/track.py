@@ -12,18 +12,16 @@ class Track:
 
     Attributes
     ----------
-    center : ChBezierCurve
+    center : Path
         the path object that describes the centerline
-    right : ChBezierCurve
+    right : Path
         the path object that describes the right boundary
-    left : ChBezierCurve
+    left : Path
         the path object that describes the left boundary
     width : int
         constant width of the track
     num_points : int
         number of points to interpolate along path
-    interval : float
-        constant factor to interpolate along path from [0,1]
 
     Methods
     -------
@@ -94,8 +92,6 @@ class RandomTrack(Track):
 
     Attributes
     ----------
-    center : ChBezierCurve
-        the path object that describes the centerline
     generator : RandomPathGenerator
         generates a random path given a certain seed value
     x_max : int

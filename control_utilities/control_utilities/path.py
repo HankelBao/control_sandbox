@@ -41,18 +41,25 @@ class Path():
     Methods
     -------
     curvature(dx, dy, ddx, ddy)
-        
+        Computes curvature at points given the first an second derivative
+    distance(x, y)
+        Compute the distance between the given points
+    calcIndex(pos, n=10)
+        Calculates the index of the closest point on the path given a position
     calcClosestPoint(pos)
-        calculates the closest point on the path from a pos
-    calcKnotIndex(t)
-        Calculates the indice of the knot point at the specified t value. ChBezierCurve requires
-        a knot index when evaluating the position, first and second derivatives.
-    eval(i)
-        wraps ChBezierCurve.eval func
-    evalD(i)
-        wraps ChBezierCurve.evalD func
-    evalDD(i)
-        wraps ChBezierCurve.evalDD func
+        Calculates the location of the closest point on the path given a position
+    getPoint(i)
+        Gets the point on the path given an index
+    calcDistance(pos)
+        Determines the distance progressed along the path
+    getDistance(i)
+        Gets the distance on the path given an index
+    calcCurvature(pos)
+        Calculates the curvature at a given point on the path given a position
+    getCurvature(i)
+        Gets the curvature on the path given an index
+    calcPosition(s)
+        Calculates the position on the path given a distance along the path
     plot(color, show=True)
         plots the path using matplotlib
 
@@ -117,10 +124,16 @@ class Path():
         return besti
 
     def calcClosestPoint(self, pos):
-        """'
+        """
         Determines closest point on the path from a pos
         """
         i = self.calcIndex(pos)
+        return self.points[i]
+
+    def getPoint(self, i):
+        """
+        Gets the point on the path given an index
+        """
         return self.points[i]
 
     def calcDistance(self, pos):
@@ -130,12 +143,24 @@ class Path():
         i = self.calcIndex(pos)
         return self.s[i]
 
+    def getDistance(self, i):
+        """
+        Gets the distance on the path given an index
+        """
+        return self.s[i]
+
     def calcCurvature(self, pos):
         """
         Determines the curvature at the closest point along the path
         """
         i = self.calcIndex(pos)
-        return self.s[i]
+        return self.k[i]
+
+    def getCurvature(self, i):
+        """
+        Gets curvature on the path given an index
+        """
+        return self.k[i]
 
     def calcPosition(self, s):
         """
@@ -199,13 +224,11 @@ class RandomPathGenerator():
     """
     RandomPathGenerator class that generates a random path using convex hulls
 
-    ...
-
     Attributes
     ----------
-    x_max : ChBezierCurve
+    x_max : int
         maximum x value for the randomly generated path
-    y_max : RandomPathGenerator
+    y_max : int
         maximum y value for the randomly generated path
     num_points : int
         number of points randomly generated at the very beginning
@@ -224,9 +247,6 @@ class RandomPathGenerator():
         generates a set of random points
     calcConvexHull(points)
         calculates the convex hull that around the random points generated
-    fixPoints()
-        TODO :: fixes overlapping and discontinuity issues along the path and track
-        not entirely sure why it works
     calcAngle(v1, v2)
         calculates the angle between two vectors
 
@@ -271,13 +291,12 @@ class RandomPathGenerator():
         """
         random.seed(seed)
         self.hull = self.calcConvexHull(self.generatePoints())
-        # self.fixPoints()
         self.hull.insert(0, self.hull[-1])
         if reversed:
             self.hull.reverse()
         return self.hull
 
-    def generatePoints(self, z=.5):
+    def generatePoints(self, z=0.5):
         """Generates a set of random points
 
         Parameters
@@ -341,25 +360,6 @@ class RandomPathGenerator():
         del lower[0]
         del lower[-1]
         return upper + lower		# Build the full hull
-
-    def fixPoints(self):
-        """TODO :: fixes overlapping and discontinuity issues along the path and track
-        not entirely sure why it works
-        """
-        for _ in range(100):
-            for i in range(len(self.hull)):
-                p1 = self.hull[i-1]
-                p2 = self.hull[i]
-                p3 = self.hull[i+1] if i < len(self.hull) - 1 else self.hull[0]
-
-                v1 = p2-p1
-                v2 = p2-p3
-
-                angle = self.calcAngle(v1, v2)
-                sign = 1 if 1-(angle<=0) else -1
-                if abs(angle) < self.min_angle:
-                    p1_len = math.hypot(*p1)
-                    p1 *= (math.hypot(*p1) + 1) / math.hypot(*p1)
 
     def calcAngle(self, v1, v2):
         """Calculates the angle between two vectors
