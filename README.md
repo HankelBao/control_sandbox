@@ -6,9 +6,14 @@ This is being developed by [Wisconsin Autonomous](https://wisconsinautonomous.or
 
 ## Clone repo
 
-First, clone the repository on your local machine. If you are using a terminal (all of this information is only relevant if you're working on the command line), run this command:
+First, clone the repository on your local machine. Please ensure you pull the submodule, as well. If you are using a terminal (all of this information is only relevant if you're working on the command line), run this command:
 ```
-git clone https://github.com/WisconsinAutonomous/control_sandbox.git && cd control_sandbox
+git clone --recursive https://github.com/WisconsinAutonomous/control_sandbox.git && cd control_sandbox
+```
+
+Note: If the repo was cloned without submodules pulled, run this command:
+```
+git submodule update --init --recursive
 ```
 
 ## Installation of PyChrono
