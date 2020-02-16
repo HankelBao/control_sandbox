@@ -15,8 +15,8 @@ def main():
         seed = random.randint(0,100)
 
     # Render preferences
-    matplotlib = 0
-    irrlicht = 1
+    matplotlib = 1
+    irrlicht = 0
 
     # Chrono Simulation step size
     ch_step_size = 1e-2
