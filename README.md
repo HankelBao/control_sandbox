@@ -51,7 +51,7 @@ Recommendation: When creating a python env, it is recommended to have an Environ
 
 1. Install xcode and the required packages using homebrew
 ```
-xcode-select --install && homebrew install python swig irrlicht
+xcode-select --install && homebrew install python swig irrlicht eigen
 ```
 2. Clone ProjectChrono locally
 ```
