@@ -125,19 +125,20 @@ class PIDThrottleController:
 
         # Return PID output (steering value)
         throttle = np.clip(
-            self.Kp * self.err + self.Ki * self.erri + self.Kd * self.errd, -1.0, 1.0
+            (self.Kp * self.err + self.Ki * self.erri + - (self.Kd * self.errd)), -1.0, 1.0
         )
 
         if throttle > 0:
             # Vehicle moving too slow
             self.braking = 0
-            self.throttle = throttle
+            self.throttle = throttle - abs(self.errd/6)
         elif veh_model.driver.GetTargetThrottle() > self.throttle_threshold:
             # Vehicle moving too fast: reduce throttle
             self.braking = 0
             self.throttle = veh_model.driver.GetTargetThrottle() + throttle
         else:
             # Vehicle moving too fast: apply brakes
-            self.braking = -throttle
+            self.braking = -throttle*((self.errd/1.5))/12
             self.throttle = 0
+
         return self.throttle, self.braking
