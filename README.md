@@ -45,33 +45,38 @@ conda config --add channels conda-forge
 
 For Mac, the anaconda installation of PyChrono does not work. You get a segmentation fault error when importing the module. As a result, ProjectChrono must be installed from source. Below are detailed instructions and commands needed to correctly install this software.
 
-Prerequisites: homebrew
+Prerequisites: [homebrew](https://brew.sh/) and xcode command line tools
+
+To install xcode, you can run this command `xcode-select --install`
 
 Recommendation: When creating a python env, it is recommended to have an Environment directory somewhere on your system. In this tutorial, please cd into that Environment directory.
 
-1. Install xcode and the required packages using homebrew
+1. **Install the required packages using homebrew**
 ```
-xcode-select --install && homebrew install python swig irrlicht eigen
+homebrew install python swig irrlicht eigen
 ```
-2. Clone ProjectChrono locally
+2. **Clone ProjectChrono locally**
 ```
 git clone https://github.com/projectchrono/chrono.git
 ```
-3. Create an Environment folder
+3. **Create an Environment folder**
+*NOTE: Steps 3 and 4 are optional.* Everything can be done outside of a python environment, it just makes it a bit cleaner. For those of you interested, a python environment allows you to install python packages specifically in a self contained place. When you exit the env, all of your packages remain, but the rest of your system is unchanged by the installs you made in the env.
 ```
 mkdir PyEnvs && cd PyEnvs
 ```
-4. Create a python environment and activate it
+4. **Create a python environment and activate it**
 ```
 python3.7 -m venv pychrono && source pychrono/bin/activate
 ```
-5. Go to the chrono directory that was created when you cloned it locally
-
-6. Create a build directory
+5. **Go to the chrono directory that was created when you cloned it locally**
+```
+cd chrono
+```
+6. **Create a build directory**
 ```
 mkdir build && cd build
 ```
-7. Use cmake and make to build the project
+7. **Use cmake and make to build the project**
 ```
 cmake \
   -DCMAKE_BUILD_TYPE:STRING=Release \
@@ -95,6 +100,14 @@ Note #2: If have multiple versions of python installed on your system, you must 
 ```
 These are the flags that were successfully used on a typical mac setup.
 
+8. **Set PYTHONPATH to point to the pychrono files**
+
+Within the same build directory, you must add the pychrono files to the PYTHONPATH. Your PYTHONPATH is basically used when you run a python command to search for files you import. Run the following command to set it. _You must be inside your build directory for this specific command to work_.
+```
+export PYTHONPATH=$PYTHONPATH:$(pwd)/bin
+```
+Note: If you are not in your build directory anymore, please replace `$(pwd)/bin` with the path to chrono/build/bin.
+
 #### Verify installation of PyChrono
 
 Verify successful installation with this command:
@@ -105,6 +118,10 @@ If this command runs without error, you're good to go!
 
 ## Installation of simulator
 
+#### Recommanded: Add the files to your PYTHONPATH
+*This is the recommended approach for installing the simulator.* The environment variable PYTHONPATH is used when you run a python command to find files not in the default folder. As a result, if you add the path of the simulator to that environmental variable, it will work without installing!!
+
+#### Install it to your system
 To use the simulator, it is recommended to install it as a local python module. You must enter the control_utilities directory and run a simple command:
 ```
 cd control_utilities && easy_install .
