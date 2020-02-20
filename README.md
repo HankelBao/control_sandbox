@@ -103,6 +103,14 @@ These are the flags that were successfully used on a typical mac setup.
 8. **Set PYTHONPATH to point to the pychrono files**
 
 Within the same build directory, you must add the pychrono files to the PYTHONPATH. Your PYTHONPATH is basically used when you run a python command to search for files you import. Run the following command to set it. _You must be inside your build directory for this specific command to work_.
+
+_Recommended approach._ This will create the correct PYTHONPATH each time you log onto your terminal. Otherwise, you will have to run a command _everytime_.
+```
+echo export PYTHONPATH=$PYTHONPATH:$(pwd)/bin >> .zshrc && source .zshrc
+```
+Note: this assumes you are using zsh. Run `echo $0`. If it says `-bash`, replace `.zshrc` with `.bashrc`.
+
+If you do not want to add it to your .zshrc (_not recommended_), just run the following command.
 ```
 export PYTHONPATH=$PYTHONPATH:$(pwd)/bin
 ```
