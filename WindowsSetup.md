@@ -76,12 +76,12 @@ In order to link to these files, there are two solutions. The first is recommend
 _[Link as reference](https://helpdeskgeek.com/how-to/create-custom-environment-variables-in-windows/)_
 1. First, find the current directory\
     Run `cd` in your command prompt. Copy the output. **_Should end in `\control_sandbox`_**.\
-      Ex. `C:\Users\user\control_sandbox\`\
+      Ex. `C:\Users\user\control_sandbox\`
 2. Open the System Properties dialog, click on Advanced and then Environment Variables
 3. Under User variables, click New... and create a variable as described below\
     Variable name: `PYTHONPATH`\
     Variable value: `<paste output from 1>\control_utilities\control_utilities`\
-      Ex. Variable value: `C:\Users\user\control_sandbox\control_utilities\control_utilities`\
+      Ex. Variable value: `C:\Users\user\control_sandbox\control_utilities\control_utilities`
 
 #### Install it to your system _Not recommended_
 To use the simulator, you can also install it as a local python module. You must enter the control_utilities directory and run a simple command:
@@ -96,11 +96,11 @@ For users using conda, this should not be required. If an error is received sayi
 _[Link as reference](https://helpdeskgeek.com/how-to/create-custom-environment-variables-in-windows/)_
 1. First, find the current directory\
     Run `cd` in your command prompt. Copy the output. **_Should end in `\control_sandbox`_**.\
-      Ex. `C:\Users\user\control_sandbox\`\
+      Ex. `C:\Users\user\control_sandbox\`
 2. Open the System Properties dialog, click on Advanced and then Environment Variables
 3. Under User variables, click New... and create a variable as described below\
     Variable name: `CHRONO_DATA_DIR`\
     Variable value: `<paste output from 1>\chrono\data\`\
-      Ex. Variable value: `C:\Users\user\control_sandbox\chrono\data\`\
+      Ex. Variable value: `C:\Users\user\control_sandbox\chrono\data\`
 
 **[You should now be ready to use the demos.](https://github.com/WisconsinAutonomous/control_sandbox/blob/master/README.md)**
