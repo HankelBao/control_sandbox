@@ -183,8 +183,10 @@ Run `cd` in your command prompt. Copy the output. **_Should end in `\control_san
 2. Open the System Properties dialog, click on Advanced and then Environment Variables
 3. Under User variables, click New... and create a variable as described below
 
-Variable name: `PYTHONPATH`\n
-Variable value: `<paste output from 1>\control_utilities\control_utilities`\n
+Variable name: `PYTHONPATH`
+
+Variable value: `<paste output from 1>\control_utilities\control_utilities`
+
 Ex. Variable value: `C:\Users\user\control_sandbox\control_utilities\control_utilities`
 
 #### Install it to your system _Not recommended_
@@ -217,8 +219,10 @@ Run `cd` in your command prompt. Copy the output. **_Should end in `\control_san
 2. Open the System Properties dialog, click on Advanced and then Environment Variables
 3. Under User variables, click New... and create a variable as described below
 
-Variable name: `CHRONO_DATA_DIR`\n
-Variable value: `<paste output from 1>\chrono\data\`\n
+Variable name: `CHRONO_DATA_DIR`
+
+Variable value: `<paste output from 1>\chrono\data\`
+
 Ex. Variable value: `C:\Users\user\control_sandbox\chrono\data\`
 
 ## Demos
