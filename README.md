@@ -172,6 +172,9 @@ echo "export PYTHONPATH=$PYTHONPATH:$(pwd)/control_utilities" >> ~/.zshrc && sou
 Note: this assumes you are using zsh. Run `echo $0`. If it says `-bash`, replace `~/.zshrc` with `~/.bashrc`.
 
 If you do not want to add it to your `.zshrc` (_not recommended_), just run the following command.
+```
+export PYTHONPATH=$PYTHONPATH:$(pwd)/control_utilities
+```
 
 #### **Windows** Add the files to your PYTHONPATH
 _[Link as reference](https://helpdeskgeek.com/how-to/create-custom-environment-variables-in-windows/)_
