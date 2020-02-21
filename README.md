@@ -41,7 +41,7 @@ Note: For some, an error occurred saying the package could not be found. If this
 conda config --add channels conda-forge
 ```
 
-To test your installation, jump down to [here](####verify-installation-of-pychrono).
+To test your installation, jump down to [here](#verify-installation-of-pychrono).
 
 ### For Mac Users
 
@@ -51,7 +51,7 @@ Prerequisites: [homebrew](https://brew.sh/) and xcode command line tools
 
 To install xcode, you can run this command `xcode-select --install`
 
-Recommendation: When creating a python env, it is recommended to have an Environment directory somewhere on your system. In this tutorial, please cd into that Environment directory.
+Recommendation: When creating a python env, it is recommended to have an Environment directory somewhere on your system.
 
 1. **Install the required packages using homebrew**
 ```
@@ -134,7 +134,7 @@ Now run the following command to return to the control_sandbox directory.
 cd ../..
 ```
 
-To test your installation of PyChrono, jump down to [here](####verify-installation-of-pychrono).
+To test your installation of PyChrono, jump down to [here](#verify-installation-of-pychrono).
 
 ### For Linux Users
 
