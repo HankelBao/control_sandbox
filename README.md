@@ -6,7 +6,7 @@ This is being developed by [Wisconsin Autonomous](https://wisconsinautonomous.or
 
 ## Clone repo
 
-First, clone the repository on your local machine. Please ensure you pull the submodule, as well. If you are using a terminal (all of this information is only relevant if you're working on the command line), run this command:
+First, clone the repository on your local machine. Please ensure you pull the submodules, as well. If you are using a terminal (all of this information is only relevant if you're working on the command line), run this command:
 ```
 git clone --recursive https://github.com/WisconsinAutonomous/control_sandbox.git && cd control_sandbox
 ```
@@ -41,6 +41,8 @@ Note: For some, an error occurred saying the package could not be found. If this
 conda config --add channels conda-forge
 ```
 
+To test your installation, jump down to [here](####verify-installation-of-pychrono).
+
 ### For Mac Users
 
 For Mac, the anaconda installation of PyChrono does not work. You get a segmentation fault error when importing the module. As a result, ProjectChrono must be installed from source. Below are detailed instructions and commands needed to correctly install this software.
@@ -53,7 +55,7 @@ Recommendation: When creating a python env, it is recommended to have an Environ
 
 1. **Install the required packages using homebrew**
 ```
-homebrew install python swig irrlicht eigen
+homebrew install cmake python swig irrlicht eigen
 ```
 2. **Clone ProjectChrono locally**
 ```
@@ -66,7 +68,7 @@ mkdir PyEnvs && cd PyEnvs
 ```
 4. **Create a python environment and activate it**
 ```
-python3.7 -m venv pychrono && source pychrono/bin/activate
+python3.7 -m venv pychrono && source pychrono/bin/activate && cd ..
 ```
 5. **Go to the chrono directory that was created when you cloned it locally**
 ```
@@ -86,19 +88,29 @@ cmake \
   -DENABLE_MODULE_VEHICLE:BOOL=ON \
   -DENABLE_MODULE_IRRLICHT:BOOL=ON \
   -DENABLE_MODULE_PYTHON:BOOL=ON \
+  -DPYTHON_EXECUTABLE:FILEPATH=/usr/local/bin/python3 \
+  -DPYTHON_INCLUDE_DIR:FILEPATH=/usr/local/Frameworks/Python.framework/Versions/3.7/include/python3.7m \
+  -DPYTHON_LIBRARY:FILEPATH=/usr/local/Frameworks/Python.framework/Versions/3.7/lib/libpython3.7.dylib \
   .. \
   && make -j12
 ```
 
 Note: substitute 12 at the end of the command with however many cores you would like to use to build chrono. I typically use all my available cores, i.e. 12.
 
-Note #2: If have multiple versions of python installed on your system, you must specify the following flags:
+Note #2: For almost all Mac users, you will already have a Python2.7 installed on your system by Apple. As a result, you will need specify the use of Python3 in the last 3 flags of the last command. If you get an error regarding the location of python, please try removing the flags that have to do with python (other than `-DENABLE_MODULE_PYTHON:BOOL`). The command will now look like the following:
 ```
-  -DPYTHON_EXECUTABLE:FILEPATH=/usr/local/bin/python3 \
-  -DPYTHON_INCLUDE_DIR:FILEPATH=/usr/local/Frameworks/Python.framework/Versions/3.7/include/python3.7m \
-  -DPYTHON_LIBRARY:FILEPATH=/usr/local/Frameworks/Python.framework/Versions/3.7/lib/libpython3.7.dylib
+cmake \
+  -DCMAKE_BUILD_TYPE:STRING=Release \
+  -DCMAKE_C_COMPILER=$(which clang) \
+  -DCMAKE_CXX_COMPILER=$(which clang++) \
+  -DENABLE_MODULE_POSTPROCESS:BOOL=ON \
+  -DENABLE_MODULE_VEHICLE:BOOL=ON \
+  -DENABLE_MODULE_IRRLICHT:BOOL=ON \
+  -DENABLE_MODULE_PYTHON:BOOL=ON \
+  .. \
+  && make -j12
 ```
-These are the flags that were successfully used on a typical mac setup.
+These were the flags that were successfully used on a typical mac setup and were found to be successful.
 
 8. **Set PYTHONPATH to point to the pychrono files**
 
@@ -106,17 +118,31 @@ Within the same build directory, you must add the pychrono files to the PYTHONPA
 
 _Recommended approach._ This will create the correct PYTHONPATH each time you log onto your terminal. Otherwise, you will have to run a command _everytime_.
 ```
-echo export PYTHONPATH=$PYTHONPATH:$(pwd)/bin >> .zshrc && source .zshrc
+echo "export PYTHONPATH=$PYTHONPATH:$(pwd)/bin" >> ~/.zshrc && source ~/.zshrc
 ```
-Note: this assumes you are using zsh. Run `echo $0`. If it says `-bash`, replace `.zshrc` with `.bashrc`.
+Note: this assumes you are using zsh. Run `echo $0`. If it says `-bash`, replace `~/.zshrc` with `~/.bashrc`.
 
-If you do not want to add it to your .zshrc (_not recommended_), just run the following command.
+If you do not want to add it to your `.zshrc` (_not recommended_), just run the following command.
 ```
 export PYTHONPATH=$PYTHONPATH:$(pwd)/bin
 ```
 Note: If you are not in your build directory anymore, please replace `$(pwd)/bin` with the path to chrono/build/bin.
 
-#### Verify installation of PyChrono
+9. **Return to the control_sandbox folder**
+Now run the following command to return to the control_sandbox directory.
+```
+cd ../..
+```
+
+To test your installation of PyChrono, jump down to [here](####verify-installation-of-pychrono).
+
+### For Linux Users
+
+Because MacOS is based on a unix system, it is the same installation process. However, the anaconda installation, similar to windows, does work on Linux. Therefore, I recommend choosing either solution and replacing certain commands with your distributions equivalent (i.e. replace `homebrew` with your package manager).
+
+Due to the large number of distributions of linux, it is best to just follow either the mac or windows installation, as they are almost exactly the same. _Also, you're a linux user... you can figure it out_ :wink:.
+
+### Verify installation of PyChrono
 
 Verify successful installation with this command:
 ```
@@ -124,16 +150,71 @@ python -c 'import pychrono'
 ```
 If this command runs without error, you're good to go!
 
-## Installation of simulator
+If you get an error, that's no fun. Please fill out an [issue](https://github.com/WisconsinAutonomous/control_sandbox/issues/new).
 
-#### Recommanded: Add the files to your PYTHONPATH
+## Installation of the controls simulator
+
+First, lets ensure you are in the right place. Run the following command which will print out your current working directory. If on windows, run `cd` and on a Unix system (Mac or Linux), run `pwd`.
+If the final portion of the output says `/control_sandbox`, then you're good to go.
+
+As seen in the control_utilities folder, there are a few utility files created that help describe the path and generate a simulation. This removes the direct need for all users to interact with the simulation engine directly.
+
+In order to link to these files, there are two solutions. The first is recommended, but both work.
+
+#### **Unix** _Recommanded_: Add the files to your PYTHONPATH
 *This is the recommended approach for installing the simulator.* The environment variable PYTHONPATH is used when you run a python command to find files not in the default folder. As a result, if you add the path of the simulator to that environmental variable, it will work without installing!!
 
-#### Install it to your system
+To have it added to your PYTHONPATH, run the following command.
+_Recommended_ (will run everytime you open your terminal without you explicitly running the command.)
+```
+echo "export PYTHONPATH=$PYTHONPATH:$(pwd)/control_utilities" >> ~/.zshrc && source ~/.zshrc
+```
+Note: this assumes you are using zsh. Run `echo $0`. If it says `-bash`, replace `~/.zshrc` with `~/.bashrc`.
+
+If you do not want to add it to your `.zshrc` (_not recommended_), just run the following command.
+
+#### **Windows** Add the files to your PYTHONPATH
+_[Link as reference](https://helpdeskgeek.com/how-to/create-custom-environment-variables-in-windows/)_
+1. First, find the current directory
+Run `cd` in your command prompt. Copy the output. **_Should end in `\control_sandbox`_**.
+2. Open the System Properties dialog, click on Advanced and then Environment Variables
+3. Under User variables, click New... and create a variable as described below
+Variable name: `PYTHONPATH`
+Variable value: `<paste output from 1>\control_utilities\control_utilities`
+Ex. Variable value: `C:\Users\user\control_sandbox\control_utilities\control_utilities`
+
+#### Install it to your system _Not recommended_
 To use the simulator, it is recommended to install it as a local python module. You must enter the control_utilities directory and run a simple command:
 ```
 cd control_utilities && easy_install .
 ```
+Note: If you get an error, run instead `cd control_utilities && python setup.py install --user --prefix=`.
+
+### **Unix** Link the chrono data directory to the project.
+_Only relevant for users who are **not** using anaconda_.
+In order to see the simulation in 3D using irrlicht (a 3D visualizer written in C++), control_sandbox must have access to chrono's data directory. Similar to previously run steps, you must use an environmental variable. Run one of the following commands to successfully link to the data directory. _The first is the recommended solution._
+
+To have it added to your CHRONO_DATA_DIR, run the following command.
+_Recommended_ (will run everytime you open your terminal without you explicitly running the command.)
+```
+echo "export CHRONO_DATA_DIR=$(pwd)/chrono/data/" >> ~/.zshrc && source ~/.zshrc
+```
+Note: this assumes you are using zsh. Run `echo $0`. If it says `-bash`, replace `~/.zshrc` with `~/.bashrc`.
+
+If you do not want to add it to your `.zshrc` (_not recommended_), just run the following command.
+```
+export CHRONO_DATA_DIR=$(pwd)/chrono/data/
+```
+
+### **Windows** Link the chrono data directory to the project.
+_[Link as reference](https://helpdeskgeek.com/how-to/create-custom-environment-variables-in-windows/)_
+1. First, find the current directory
+Run `cd` in your command prompt. Copy the output. **_Should end in `\control_sandbox`_**.
+2. Open the System Properties dialog, click on Advanced and then Environment Variables
+3. Under User variables, click New... and create a variable as described below
+Variable name: `CHRONO_DATA_DIR`
+Variable value: `<paste output from 1>\chrono\data\`
+Ex. Variable value: `C:\Users\user\control_sandbox\chrono\data\`
 
 ## Demos
 
