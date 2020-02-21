@@ -8,7 +8,7 @@ This is being developed by [Wisconsin Autonomous](https://wisconsinautonomous.or
 
 I have written detailed installation guides for this repository. Please follow the guide that is relevant to the operating system you're using.
 
-Windows: [Setup Guide](https://github.com/WisconsinAutonomous/control_sandbox/blob/master/WindowsSetup.md)
+Windows: [Setup Guide](https://github.com/WisconsinAutonomous/control_sandbox/blob/master/WindowsSetup.md)\
 Unix (Mac and Linux): [Setup Guide](https://github.com/WisconsinAutonomous/control_sandbox/blob/master/UnixSetup.md)
 
 ## Demos
