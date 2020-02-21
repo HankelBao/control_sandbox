@@ -20,6 +20,8 @@ To install Anaconda, please refer to this [link](https://docs.anaconda.com/anaco
 
 Once installed, activate an environment you would like to install PyChrono to. It is recommended to make a new environment and install everything here. [A good resource for help with that.](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html).
 
+### IMPORTANT, RESTART SHELL PRIOR TO CREATING CONDA ENVIRONMENT
+
 Create a conda environment with python3.7
 ```
 conda create -n pychronoenv python=3.7 && conda activate pychronoenv
