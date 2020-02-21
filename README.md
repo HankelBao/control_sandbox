@@ -182,6 +182,7 @@ _[Link as reference](https://helpdeskgeek.com/how-to/create-custom-environment-v
 Run `cd` in your command prompt. Copy the output. **_Should end in `\control_sandbox`_**.
 2. Open the System Properties dialog, click on Advanced and then Environment Variables
 3. Under User variables, click New... and create a variable as described below
+
 Variable name: `PYTHONPATH`
 Variable value: `<paste output from 1>\control_utilities\control_utilities`
 Ex. Variable value: `C:\Users\user\control_sandbox\control_utilities\control_utilities`
@@ -215,6 +216,7 @@ _[Link as reference](https://helpdeskgeek.com/how-to/create-custom-environment-v
 Run `cd` in your command prompt. Copy the output. **_Should end in `\control_sandbox`_**.
 2. Open the System Properties dialog, click on Advanced and then Environment Variables
 3. Under User variables, click New... and create a variable as described below
+
 Variable name: `CHRONO_DATA_DIR`
 Variable value: `<paste output from 1>\chrono\data\`
 Ex. Variable value: `C:\Users\user\control_sandbox\chrono\data\`
