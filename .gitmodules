@@ -1,3 +1,6 @@
 [submodule "chrono"]
 	path = chrono
 	url = https://github.com/projectchrono/chrono.git
+[submodule "control_utilities"]
+	path = control_utilities
+	url = https://github.com/AaronYoung5/control_utilities.git
