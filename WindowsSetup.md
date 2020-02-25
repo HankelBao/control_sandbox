@@ -91,7 +91,7 @@ cd control_utilities && easy_install .
 Note: If you get an error, run instead `cd control_utilities && python setup.py install --user --prefix=`.
 
 #### Link the chrono data directory to the project.
-For users using conda, this should not be required. If an error is received saying something about `CHRONO_DATA_DIR`, please do the following.
+**_For users using conda, this should not be required._** If an error is received saying something about `CHRONO_DATA_DIR`, please do the following.
 
 _[Link as reference](https://helpdeskgeek.com/how-to/create-custom-environment-variables-in-windows/)_
 1. First, find the current directory\
