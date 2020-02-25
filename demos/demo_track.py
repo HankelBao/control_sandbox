@@ -11,7 +11,7 @@ if __name__ == "__main__":
     else:
         seed = 1.0
 
-    rand_track = RandomTrack()
+    rand_track = RandomTrack(x_max=250, y_max=250, width=15)
     rand_track.plot(seed)
 
     points = [
