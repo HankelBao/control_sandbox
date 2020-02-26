@@ -37,7 +37,7 @@ class PIDSteeringController:
             0,
         )
 
-        self.target, _ = self.path.calcClosestPoint(self.sentinel)
+        self.target = self.path.calcClosestPoint(self.sentinel)
 
 
         #if state.x > -20 and state.x < 0:
@@ -94,7 +94,7 @@ class PIDSteeringController:
 
 
 class PIDThrottleController:
-    def __init__(self):
+    def __init__(self, path):
         self.Kp = 0
         self.Ki = 0
         self.Kd = 0
@@ -107,6 +107,8 @@ class PIDThrottleController:
         self.target_speed = 0
 
         self.throttle_threshold = 0.2
+        
+        self.path = path
 
     def SetGains(self, Kp, Ki, Kd):
         self.Kp = Kp
@@ -117,6 +119,8 @@ class PIDThrottleController:
         self.target_speed = speed
 
     def Advance(self, step, veh_model):
+        #self.target_speed = (self.path.calcSpeed(veh_model.vehicle.GetVehiclePos()))/1.5
+        
         self.speed = veh_model.GetState().v
 
         # Calculate current error
