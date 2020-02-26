@@ -37,14 +37,14 @@ def main():
     steering_controller = PIDSteeringController(track.center)
 
 
-    steering_controller.SetGains(Kp=0.4, Ki=0, Kd=0.25)
-    steering_controller.SetLookAheadDistance(dist=5)
+    steering_controller.SetGains(Kp=0.4, Ki=0, Kd=0.3)
+    steering_controller.SetLookAheadDistance(dist=0.5)
 
     # steering_controller.initTracker(track.center)
 
     throttle_controller = PIDThrottleController()
     throttle_controller.SetGains(Kp=0.3, Ki=0, Kd=0.5)
-    throttle_controller.SetTargetSpeed(speed=9.0)
+    throttle_controller.SetTargetSpeed(speed=9.0)#speed set to 9.0 with no obstacle avoidance
 
     initLoc, initRot = GetInitPose([track.center.x[0],track.center.y[0]], [track.center.x[1],track.center.y[1]], reversed=reversed)
 
@@ -62,11 +62,10 @@ def main():
     while True:
         # Update controllers
         steering = steering_controller.Advance(ch_step_size, chrono)
-        print(chrono.vehicle.GetVehicleSpeed())
 
-        if chrono.vehicle.GetVehicleSpeed() < 7:
+        if chrono.vehicle.GetVehicleSpeed() < 7: #7 with no obstacle avoidance
             steering_controller.SetGains(Kp=0.2, Ki=0, Kd=0.6)
-        elif chrono.vehicle.GetVehicleSpeed() < 8.5:
+        elif chrono.vehicle.GetVehicleSpeed() < 8: #8 with no obstacle avoidance
             steering_controller.SetGains(Kp=0.3, Ki=0, Kd=0.45)
         else:
             steering_controller.SetGains(Kp=0.4, Ki=0, Kd=0.3)

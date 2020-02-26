@@ -39,6 +39,14 @@ class PIDSteeringController:
 
         self.target, _ = self.path.calcClosestPoint(self.sentinel)
 
+
+        #if state.x > -20 and state.x < 0:
+         #   print("OG Target" + str(self.target.x))
+          #  self.target.x =  self.target.x - 5/(1+(math.exp(-(state.x + 10))))
+           # print("NEW Target" + str(self.target.x))
+            #print(state.x + 10)
+
+
         # The "error" vector is the projection onto the horizontal plane (z=0) of
         # vector between sentinel and target
         err_vec = self.target - self.sentinel
@@ -123,6 +131,8 @@ class PIDThrottleController:
         # Cache new error
         self.err = err
 
+        print(self.speed)
+
         # Return PID output (steering value)
         throttle = np.clip(
             (self.Kp * self.err + self.Ki * self.erri + - (self.Kd * self.errd)), -1.0, 1.0
@@ -131,7 +141,7 @@ class PIDThrottleController:
         if throttle > 0:
             # Vehicle moving too slow
             self.braking = 0
-            self.throttle = throttle - abs(self.errd/6)
+            self.throttle = throttle #- abs(self.errd/6)
         elif veh_model.driver.GetTargetThrottle() > self.throttle_threshold:
             # Vehicle moving too fast: reduce throttle
             self.braking = 0
