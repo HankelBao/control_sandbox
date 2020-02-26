@@ -101,19 +101,33 @@ class PIDThrottleController:
         self.throttle_threshold = 0.2
 
         self.path = path
+        self.dist = 0
 
     def SetGains(self, Kp, Ki, Kd):
         self.Kp = Kp
         self.Ki = Ki
         self.Kd = Kd
 
+    def SetLookAheadDistance(self, dist):
+        self.dist = dist
+
     def SetTargetSpeed(self, speed):
         self.target_speed = speed
 
     def Advance(self, step, veh_model):
-        self.target_speed = self.path.calcSpeed(veh_model.vehicle.GetVehiclePos())
+        state = veh_model.GetState()
+        self.sentinel = chrono.ChVectorD(
+            self.dist * math.cos(state.yaw) + state.x,
+            self.dist * math.sin(state.yaw) + state.y,
+            0,
+        )
+
+        self.target = self.path.calcClosestPoint(self.sentinel)
+
+        self.target_speed = self.path.calcSpeed(self.target)
 
         self.speed = veh_model.GetState().v
+        print(self.speed)
 
         # Calculate current error
         err = self.target_speed - self.speed
