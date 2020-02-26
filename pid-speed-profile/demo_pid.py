@@ -36,12 +36,12 @@ def main():
     # --------------------
     steering_controller = PIDSteeringController(track.center)
     steering_controller.SetGains(Kp=0.4, Ki=0, Kd=0.3)
-    steering_controller.SetLookAheadDistance(dist=0.5)
+    steering_controller.SetLookAheadDistance(dist=5)
     # steering_controller.initTracker(track.center)
 
     throttle_controller = PIDThrottleController(track.center)
     throttle_controller.SetGains(Kp=0.4, Ki=0, Kd=0.45)
-    throttle_controller.SetLookAheadDistance(dist=0.5)
+    throttle_controller.SetLookAheadDistance(dist=5)
     throttle_controller.SetTargetSpeed(speed=10.0)
 
     initLoc, initRot = GetInitPose([track.center.x[0],track.center.y[0]], [track.center.x[1],track.center.y[1]], reversed=reversed)
