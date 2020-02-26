@@ -39,14 +39,6 @@ class PIDSteeringController:
 
         self.target = self.path.calcClosestPoint(self.sentinel)
 
-
-        #if state.x > -20 and state.x < 0:
-         #   print("OG Target" + str(self.target.x))
-          #  self.target.x =  self.target.x - 5/(1+(math.exp(-(state.x + 10))))
-           # print("NEW Target" + str(self.target.x))
-            #print(state.x + 10)
-
-
         # The "error" vector is the projection onto the horizontal plane (z=0) of
         # vector between sentinel and target
         err_vec = self.target - self.sentinel
@@ -94,7 +86,7 @@ class PIDSteeringController:
 
 
 class PIDThrottleController:
-    def __init__(self):
+    def __init__(self, path):
         self.Kp = 0
         self.Ki = 0
         self.Kd = 0
@@ -108,16 +100,34 @@ class PIDThrottleController:
 
         self.throttle_threshold = 0.2
 
+        self.path = path
+        self.dist = 0
+
     def SetGains(self, Kp, Ki, Kd):
         self.Kp = Kp
         self.Ki = Ki
         self.Kd = Kd
 
+    def SetLookAheadDistance(self, dist):
+        self.dist = dist
+
     def SetTargetSpeed(self, speed):
         self.target_speed = speed
 
     def Advance(self, step, veh_model):
+        state = veh_model.GetState()
+        self.sentinel = chrono.ChVectorD(
+            self.dist * math.cos(state.yaw) + state.x,
+            self.dist * math.sin(state.yaw) + state.y,
+            0,
+        )
+
+        self.target = self.path.calcClosestPoint(self.sentinel)
+
+        self.target_speed = self.path.calcSpeed(self.target)
+
         self.speed = veh_model.GetState().v
+        # print(self.speed)
 
         # Calculate current error
         err = self.target_speed - self.speed
@@ -131,24 +141,21 @@ class PIDThrottleController:
         # Cache new error
         self.err = err
 
-        print(self.speed)
-
         # Return PID output (steering value)
         throttle = np.clip(
-            (self.Kp * self.err + self.Ki * self.erri + - (self.Kd * self.errd)), -1.0, 1.0
+            self.Kp * self.err + self.Ki * self.erri + self.Kd * self.errd, -1.0, 1.0
         )
 
         if throttle > 0:
             # Vehicle moving too slow
             self.braking = 0
-            self.throttle = throttle #- abs(self.errd/6)
+            self.throttle = throttle
         elif veh_model.driver.GetTargetThrottle() > self.throttle_threshold:
             # Vehicle moving too fast: reduce throttle
             self.braking = 0
             self.throttle = veh_model.driver.GetTargetThrottle() + throttle
         else:
             # Vehicle moving too fast: apply brakes
-            self.braking = -throttle*((self.errd/1.5))/12
+            self.braking = -throttle
             self.throttle = 0
-
         return self.throttle, self.braking
