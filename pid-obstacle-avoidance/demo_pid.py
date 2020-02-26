@@ -17,12 +17,12 @@ def main():
 
     # Render preferences
     matplotlib = 1
-    irrlicht = 0
+    irrlicht = 1
 
     # Chrono Simulation step size
     ch_step_size = 1e-2
     # Matplotlib Simulation step size
-    mat_step_size = 2e-2
+    mat_step_size = 9e-2
 
     # ------------
     # Create track
@@ -36,7 +36,7 @@ def main():
     # Create obstacles
     # ----------------
     # Change n to add more obstacles
-    obstacles = RandomObstacleGenerator.generateObstacles(track.center, n=1, seed=seed*randint(0,90))
+    obstacles = RandomObstacleGenerator.generateObstacles(track.center, i_min=100, i_max=250, n=1, seed=seed*random.randint(0,90), reversed=reversed)
     print(obstacles) # Is a python dictionary
     # To access: obstacles[<path_index>] = position_vector
 
