@@ -62,6 +62,14 @@ def main():
         steering = steering_controller.Advance(ch_step_size, chrono)
         throttle, braking = throttle_controller.Advance(ch_step_size, chrono)
 
+        if chrono.vehicle.GetVehicleSpeed() < 7:
+            steering_controller.SetGains(Kp=0.2, Ki=0, Kd=0.6)
+        elif chrono.vehicle.GetVehicleSpeed() < 8:
+            steering_controller.SetGains(Kp=0.3, Ki=0, Kd=0.45)
+        else:
+            steering_controller.SetGains(Kp=0.4, Ki=0, Kd=0.3)
+
+
         chrono.driver.SetTargetSteering(steering)
         chrono.driver.SetTargetThrottle(throttle)
         chrono.driver.SetTargetBraking(braking)
