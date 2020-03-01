@@ -30,6 +30,8 @@ def main():
     track = RandomTrack()
     track.generateTrack(seed=seed, reversed=reversed)
     print('Using seed :: {}'.format(seed))
+    
+    
 
     # --------------------
     # Create controller(s)
