@@ -38,6 +38,9 @@ class PIDSteeringController:
         )
 
         self.target = self.path.calcClosestPoint(self.sentinel)
+        self.sentinel.z = 0.5
+        veh_model.ballS.SetPos(self.sentinel)
+        veh_model.ballT.SetPos(self.target)
 
         # The "error" vector is the projection onto the horizontal plane (z=0) of
         # vector between sentinel and target

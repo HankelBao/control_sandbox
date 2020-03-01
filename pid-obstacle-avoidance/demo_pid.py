@@ -16,7 +16,7 @@ def main():
         seed = random.randint(0,100)
 
     # Render preferences
-    matplotlib = 1
+    matplotlib = 0
     irrlicht = 1
 
     # Chrono Simulation step size
@@ -62,7 +62,8 @@ def main():
         initLoc=initLoc,
         initRot=initRot,
         irrlicht=irrlicht,
-        obstacles=obstacles
+        obstacles=obstacles,
+        vis_balls=True
     )
 
     mat = MatSim(mat_step_size)
