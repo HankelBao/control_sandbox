@@ -52,18 +52,25 @@ class PIDSteeringController:
 
         x = 0
         if obsp2x >= obsp1x and p2.x >= p1.x:
-            x = 1
+            if left:
+                x = 1
+            else:
+                x = -1
         elif obsp2x >= obsp1x and p2.x < p1.x:
-            x = -1
+            if left:
+                x = -1
+            else:
+                x = 1
         elif obsp2x < obsp1x and p2.x < p1.x:
-            x = -1
+            if left:
+                x = -1
+            else:
+                x = 1
         elif obsp2x < obsp1x and p2.x >= p1.x:
-            x = 1
-
-        if left:
-            x = 1*x
-        else:
-            x = -1*x
+            if left:
+                x = 1
+            else:
+                x = -1
         angle = atan((p2.y - p1.y) / (p2.x - p1.x)) + x*pi / 2
 
         return angle
