@@ -4,6 +4,7 @@ import math
 from math import atan
 from math import cos
 from math import sin
+from math import pi
 from matplotlib import pyplot as plt
 
 
@@ -42,34 +43,54 @@ class PIDSteeringController:
     def SetObstacleDistance(self, obsDist):
         self.obsDist = obsDist
 
-    def calcObstacleAvoidanceAngle(self, lor, it):
+    def calcObstacleAvoidanceAngle(self, left, it):
+        p1 = self.path.getPoint(it-1)
+        p2 = self.path.getPoint(it + 1)
+        obsp1x = self.obstacle.p1.x
+        obsp2x = self.obstacle.p2.x
         angle = 0
-        angle = atan((self.path.getPoint(it+1).y - self.path.getPoint(it-1).y)/(self.path.getPoint(it+1).x - self.path.getPoint(it-1).x)) + 1.5708
+
+        x = 0
+        if obsp2x >= obsp1x and p2.x >= p1.x:
+            x = 1
+        elif obsp2x >= obsp1x and p2.x < p1.x:
+            x = -1
+        elif obsp2x < obsp1x and p2.x < p1.x:
+            x = -1
+        elif obsp2x < obsp1x and p2.x >= p1.x:
+            x = 1
+
+        if left:
+            x = 1*x
+        else:
+            x = -1*x
+        angle = atan((p2.y - p1.y) / (p2.x - p1.x)) + x*pi / 2
+
         return angle
 
 
-    def calculateWayPoint(self, lor, s, obstacle):
-        centerX = (obstacle.p1.x + obstacle.p2.x)/2
-        centerY = (obstacle.p1.y + obstacle.p2.y)/2
-        wayPointX = 0
-        wayPointY = 0
-        angle = self.calcObstacleAvoidanceAngle(lor, obstacle)
-        if(lor):
-            wayPointX = centerX - s*cos(angle)
-            wayPointY = centerY - s*sin(angle)
-        else:
-            wayPointX = centerX + s*cos(angle)
-            wayPointY = centerY + s*sin(angle)
-        return wayPointX, wayPointY
+    #def calculateWayPoint(self, lor, s, obstacle):
+    #    centerX = (obstacle.p1.x + obstacle.p2.x)/2
+    #    centerY = (obstacle.p1.y + obstacle.p2.y)/2
+    #    wayPointX = 0
+    #    wayPointY = 0
+    #    angle = self.calcObstacleAvoidanceAngle(lor, obstacle)
+    #    if(lor):
+    #        wayPointX = centerX - s*cos(angle)
+    #        wayPointY = centerY - s*sin(angle)
+    #    else:
+    #        wayPointX = centerX + s*cos(angle)
+    #        wayPointY = centerY + s*sin(angle)
+    #    return wayPointX, wayPointY
 
-    def calculateObstacleOffset(self, lor, s, obstacle, a, dist):
+    def calculateObstacleOffset(self, s, obstacle, a, dist):
         offset = s/(1 + math.exp(-a*(dist)))
         return offset
 
-    def alterTargetForObstacle(self, it, lor, s, obstacle, a, dist, targ):
-        angle = self.calcObstacleAvoidanceAngle(lor, it)
-        offset = self.calculateObstacleOffset(lor, s, obstacle, a, dist)
+    def alterTargetForObstacle(self, it, left, s, obstacle, a, dist, targ):
+        angle = self.calcObstacleAvoidanceAngle(left, it)
         print(angle)
+        offset = self.calculateObstacleOffset(s, obstacle, a, dist)
         targ.x = targ.x + offset*cos(angle)
         targ.y = targ.y + offset*sin(angle)
 
@@ -106,19 +127,19 @@ class PIDSteeringController:
                 x = 0
 
         print(self.obstacleInRange)
-        if self.obstacleInRange:
-            self.distanceToObstacle = self.path.getDistance(loc) - self.path.getDistance(it)
-            self.alterTargetForObstacle(it, False, 10, self.obstacle, 0.8, -((self.distanceToObstacle/self.gap)*10 - 5), targ)
-            print("NEW Target X: " + str(targ.x))
-            print("NEW Target Y: " + str(targ.y))
         if ist > loc and self.obstacleInRange:
             self.obstacleInRange = False
             self.gap = 0
 
+        if self.obstacleInRange:
+            self.distanceToObstacle = self.path.getDistance(loc) - self.path.getDistance(it)
+            self.alterTargetForObstacle(it, False, 10, self.obstacle, 0.75, -((self.distanceToObstacle/self.gap)*10 - 5), targ)
+            #print("NEW Target X: " + str(targ.x))
+            #print("NEW Target Y: " + str(targ.y))
 
 
-        veh_model.ballS.SetPos(self.sentinel)
-        veh_model.ballT.SetPos(targ)
+        #veh_model.ballS.SetPos(self.sentinel)
+        #veh_model.ballT.SetPos(targ)
 
         # The "error" vector is the projection onto the horizontal plane (z=0) of
         # vector between sentinel and target
