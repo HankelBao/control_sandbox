@@ -16,13 +16,13 @@ def main():
         seed = random.randint(0,100)
 
     # Render preferences
-    matplotlib = 1
+    matplotlib = 0
     irrlicht = 1
 
     # Chrono Simulation step size
     ch_step_size = 1e-2
     # Matplotlib Simulation step size
-    mat_step_size = 9e-2
+    mat_step_size = 1e-2
 
     # ------------
     # Create track
@@ -37,6 +37,7 @@ def main():
     # ----------------
     # Change n to add more obstacles
     obstacles = RandomObstacleGenerator.generateObstacles(track.center, i_min=100, i_max=250, n=1, seed=seed*random.randint(0,90), reversed=reversed)
+    
     print(obstacles) # Is a python dictionary
     # To access: obstacles[<path_index>] = position_vector
 
@@ -44,15 +45,16 @@ def main():
     # --------------------
     # Create controller(s)
     # --------------------
-    steering_controller = PIDSteeringController(track.center)
+    steering_controller = PIDSteeringController(track.center, obstacles)
     steering_controller.SetGains(Kp=0.4, Ki=0, Kd=0.3)
-    steering_controller.SetLookAheadDistance(dist=5)
+    steering_controller.SetLookAheadDistance(lookDist=5)
+    steering_controller.SetObstacleDistance(obsDist=75)
     # steering_controller.initTracker(track.center)
 
     throttle_controller = PIDThrottleController(track.center)
     throttle_controller.SetGains(Kp=0.4, Ki=0, Kd=0.45)
     throttle_controller.SetLookAheadDistance(dist=5)
-    throttle_controller.SetTargetSpeed(speed=10.0)
+    throttle_controller.SetTargetSpeed(speed=6.0)
 
     initLoc, initRot = GetInitPose([track.center.x[0],track.center.y[0]], [track.center.x[1],track.center.y[1]], reversed=reversed)
 
@@ -62,16 +64,21 @@ def main():
         initLoc=initLoc,
         initRot=initRot,
         irrlicht=irrlicht,
-        obstacles=obstacles
+        obstacles=obstacles,
+        vis_balls=True
     )
 
+
     mat = MatSim(mat_step_size)
+
 
     ch_time = mat_time = 0
     while True:
         # Update controllers
         steering = steering_controller.Advance(ch_step_size, chrono)
         throttle, braking = throttle_controller.Advance(ch_step_size, chrono)
+        
+        state = chrono.GetState()
 
         if chrono.vehicle.GetVehicleSpeed() < 7:
             steering_controller.SetGains(Kp=0.2, Ki=0, Kd=0.6)
@@ -88,6 +95,7 @@ def main():
         if chrono.Advance(ch_step_size) == -1:
             chrono.Close()
             break
+
 
         if matplotlib and ch_time >= mat_time:
             if mat.plot(track, chrono, obstacles) == -1:

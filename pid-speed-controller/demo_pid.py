@@ -30,6 +30,8 @@ def main():
     track = RandomTrack()
     track.generateTrack(seed=seed, reversed=reversed)
     print('Using seed :: {}'.format(seed))
+    
+    
 
     # --------------------
     # Create controller(s)
@@ -42,7 +44,7 @@ def main():
 
     # steering_controller.initTracker(track.center)
 
-    throttle_controller = PIDThrottleController()
+    throttle_controller = PIDThrottleController(track.center)
     throttle_controller.SetGains(Kp=0.3, Ki=0, Kd=0.5)
     throttle_controller.SetTargetSpeed(speed=9.0)#speed set to 9.0 with no obstacle avoidance
 
@@ -63,9 +65,9 @@ def main():
         # Update controllers
         steering = steering_controller.Advance(ch_step_size, chrono)
 
-        if chrono.vehicle.GetVehicleSpeed() < 7: #7 with no obstacle avoidance
+        if chrono.vehicle.GetVehicleSpeed() < 8: #7 with no obstacle avoidance
             steering_controller.SetGains(Kp=0.2, Ki=0, Kd=0.6)
-        elif chrono.vehicle.GetVehicleSpeed() < 8: #8 with no obstacle avoidance
+        elif chrono.vehicle.GetVehicleSpeed() < 9: #8 with no obstacle avoidance
             steering_controller.SetGains(Kp=0.3, Ki=0, Kd=0.45)
         else:
             steering_controller.SetGains(Kp=0.4, Ki=0, Kd=0.3)
