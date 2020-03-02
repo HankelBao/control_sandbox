@@ -43,34 +43,46 @@ class PIDSteeringController:
     def SetObstacleDistance(self, obsDist):
         self.obsDist = obsDist
 
-    def calcObstacleAvoidanceAngle(self, left, it):
+    def calcObstacleAvoidanceAngle(self, left, it, targ, state):
         p1 = self.path.getPoint(it-1)
         p2 = self.path.getPoint(it + 1)
         obsp1x = self.obstacle.p1.x
         obsp2x = self.obstacle.p2.x
+        obsp1y = self.obstacle.p1.y
         angle = 0
 
         x = 0
-        if obsp2x >= obsp1x and p2.x >= p1.x:
+        if obsp2x > obsp1x and p2.x >= p1.x:
             if left:
                 x = 1
             else:
                 x = -1
-        elif obsp2x >= obsp1x and p2.x < p1.x:
+        elif obsp2x > obsp1x and p2.x < p1.x:
             if left:
                 x = -1
             else:
                 x = 1
-        elif obsp2x < obsp1x and p2.x < p1.x:
+        elif obsp2x < obsp1x and p2.x <= p1.x:
             if left:
                 x = -1
             else:
                 x = 1
-        elif obsp2x < obsp1x and p2.x >= p1.x:
+        elif obsp2x < obsp1x and p2.x > p1.x:
             if left:
                 x = 1
             else:
                 x = -1
+        else:
+            if targ.y > state.y:
+                if left:
+                   x = 1
+                else:
+                   x = -1
+            else:
+                if left:
+                   x = -1
+                else:
+                   x = 1
         angle = atan((p2.y - p1.y) / (p2.x - p1.x)) + x*pi / 2
 
         return angle
@@ -94,8 +106,8 @@ class PIDSteeringController:
         offset = s/(1 + math.exp(-a*(dist)))
         return offset
 
-    def alterTargetForObstacle(self, it, left, s, obstacle, a, dist, targ):
-        angle = self.calcObstacleAvoidanceAngle(left, it)
+    def alterTargetForObstacle(self, it, left, s, obstacle, a, dist, targ, state):
+        angle = self.calcObstacleAvoidanceAngle(left, it, targ, state)
         print(angle)
         offset = self.calculateObstacleOffset(s, obstacle, a, dist)
         targ.x = targ.x + offset*cos(angle)
@@ -140,13 +152,13 @@ class PIDSteeringController:
 
         if self.obstacleInRange:
             self.distanceToObstacle = self.path.getDistance(loc) - self.path.getDistance(it)
-            self.alterTargetForObstacle(it, False, 10, self.obstacle, 0.75, -((self.distanceToObstacle/self.gap)*10 - 5), targ)
+            self.alterTargetForObstacle(it, False, 10, self.obstacle, 0.75, -((self.distanceToObstacle/self.gap)*10 - 5), targ, state)
             #print("NEW Target X: " + str(targ.x))
             #print("NEW Target Y: " + str(targ.y))
 
 
-        #veh_model.ballS.SetPos(self.sentinel)
-        #veh_model.ballT.SetPos(targ)
+        veh_model.ballS.SetPos(self.sentinel)
+        veh_model.ballT.SetPos(targ)
 
         # The "error" vector is the projection onto the horizontal plane (z=0) of
         # vector between sentinel and target
