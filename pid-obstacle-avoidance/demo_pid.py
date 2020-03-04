@@ -22,7 +22,7 @@ def main():
     # Chrono Simulation step size
     ch_step_size = 1e-2
     # Matplotlib Simulation step size
-    mat_step_size = 1e-2
+    mat_step_size = 5e-2
 
     # ------------
     # Create track
@@ -36,8 +36,9 @@ def main():
     # Create obstacles
     # ----------------
     # Change n to add more obstacles
-    obstacles = RandomObstacleGenerator.generateObstacles(track.center, i_min=100, i_max=250, n=1, seed=seed*random.randint(0,90), reversed=reversed)
-    
+    # Good movement_rate is 5 to 10
+    obstacles = RandomObstacleGenerator.generateObstacles(track.center, i_min=100, i_max=250, n=1, seed=seed*random.randint(0,90), reversed=reversed, movement_rate=5, movement_distance=1)
+
     print(obstacles) # Is a python dictionary
     # To access: obstacles[<path_index>] = position_vector
 
@@ -73,11 +74,13 @@ def main():
 
 
     ch_time = mat_time = 0
+    import matplotlib.pyplot as plt
+    i = 0
     while True:
         # Update controllers
         steering = steering_controller.Advance(ch_step_size, chrono)
         throttle, braking = throttle_controller.Advance(ch_step_size, chrono)
-        
+
         state = chrono.GetState()
 
         if chrono.vehicle.GetVehicleSpeed() < 7:
@@ -102,9 +105,14 @@ def main():
                 print("Quit message received.")
                 mat.close()
                 break
+            plt.savefig("fig"+str(i)+".png")
+            i += 1
+
             mat_time += mat_step_size
 
         ch_time += ch_step_size
+        if ch_time % 1 <= 1e-3:
+            print(ch_time)
 
         if ch_time > 50:
             break
