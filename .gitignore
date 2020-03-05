@@ -6,6 +6,9 @@ __pycache__/
 .idea/
 .DS_Store
 env
+*.png
+*.jpg
+*.mp4
 
 # C extensions
 *.so
