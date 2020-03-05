@@ -108,7 +108,7 @@ class PIDSteeringController:
 
     def alterTargetForObstacle(self, it, left, s, obstacle, a, dist, targ, state):
         angle = self.calcObstacleAvoidanceAngle(left, it, targ, state)
-        # print(angle)
+        print(angle)
         offset = self.calculateObstacleOffset(s, obstacle, a, dist)
         targ.x = targ.x + offset*cos(angle)
         targ.y = targ.y + offset*sin(angle)
@@ -145,7 +145,7 @@ class PIDSteeringController:
              except KeyError:
                 x = 0
 
-        # print(self.obstacleInRange)
+        print(self.obstacleInRange)
         if ist > loc and self.obstacleInRange:
             self.obstacleInRange = False
             self.gap = 0
@@ -157,9 +157,8 @@ class PIDSteeringController:
             #print("NEW Target Y: " + str(targ.y))
 
 
-        if hasattr(veh_model, 'ballS'):
-            veh_model.ballS.SetPos(self.sentinel)
-            veh_model.ballT.SetPos(targ)
+        veh_model.ballS.SetPos(self.sentinel)
+        veh_model.ballT.SetPos(targ)
 
         # The "error" vector is the projection onto the horizontal plane (z=0) of
         # vector between sentinel and target
