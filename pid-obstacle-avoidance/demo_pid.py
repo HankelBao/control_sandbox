@@ -75,8 +75,8 @@ def main():
     ch_time = mat_time = 0
     while True:
         # Update controllers
-        steering = steering_controller.Advance(ch_step_size, chrono)
-        throttle, braking = throttle_controller.Advance(ch_step_size, chrono)
+        steering, obstacleInRange = steering_controller.Advance(ch_step_size, chrono)
+        throttle, braking = throttle_controller.Advance(ch_step_size, chrono, obstacleInRange)
         
         state = chrono.GetState()
 

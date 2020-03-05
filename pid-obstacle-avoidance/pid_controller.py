@@ -102,14 +102,14 @@ class PIDSteeringController:
     #        wayPointY = centerY + s*sin(angle)
     #    return wayPointX, wayPointY
 
-    def calculateObstacleOffset(self, s, obstacle, a, dist):
-        offset = s/(1 + math.exp(-a*(dist)))
+    def calculateObstacleOffset(self, s, a, xV):
+        offset = s/(1 + math.exp(-a*(xV)))
         return offset
 
-    def alterTargetForObstacle(self, it, left, s, obstacle, a, dist, targ, state):
+    def alterTargetForObstacle(self, it, left, s, a, xV, targ, state):
         angle = self.calcObstacleAvoidanceAngle(left, it, targ, state)
         print(angle)
-        offset = self.calculateObstacleOffset(s, obstacle, a, dist)
+        offset = self.calculateObstacleOffset(s, a, xV)
         targ.x = targ.x + offset*cos(angle)
         targ.y = targ.y + offset*sin(angle)
 
@@ -152,7 +152,7 @@ class PIDSteeringController:
 
         if self.obstacleInRange:
             self.distanceToObstacle = self.path.getDistance(loc) - self.path.getDistance(it)
-            self.alterTargetForObstacle(it, False, 10, self.obstacle, 0.75, -((self.distanceToObstacle/self.gap)*10 - 5), targ, state)
+            self.alterTargetForObstacle(it, False, 10, 0.75, -((self.distanceToObstacle/self.gap)*10 - 5), targ, state)
             #print("NEW Target X: " + str(targ.x))
             #print("NEW Target Y: " + str(targ.y))
 
@@ -186,7 +186,7 @@ class PIDSteeringController:
             self.Kp * self.err + self.Ki * self.erri + self.Kd * self.errd, -1.0, 1.0
         )
 
-        return self.steering
+        return self.steering, self.obstacleInRange
 
     def calcSign(self, veh_model, targ):
         """
@@ -235,7 +235,7 @@ class PIDThrottleController:
     def SetTargetSpeed(self, speed):
         self.target_speed = speed
 
-    def Advance(self, step, veh_model):
+    def Advance(self, step, veh_model, obstacleInRange):
         state = veh_model.GetState()
         self.sentinel = chrono.ChVectorD(
             self.dist * math.cos(state.yaw) + state.x,
@@ -245,7 +245,13 @@ class PIDThrottleController:
 
         self.target = self.path.calcClosestPoint(self.sentinel)
 
-        #self.target_speed = self.path.calcSpeed(self.target)
+        print(obstacleInRange)
+
+        if obstacleInRange:
+            self.target_speed = 6
+        else:
+            self.target_speed = self.path.calcSpeed(self.target)
+
 
         self.speed = veh_model.GetState().v
         # print(self.speed)
