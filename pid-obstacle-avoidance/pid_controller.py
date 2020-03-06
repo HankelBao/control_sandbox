@@ -113,7 +113,6 @@ class PIDSteeringController:
 
     def alterTargetForObstacle(self, it, left, s, a, dist, targ, state):
         angle = self.calcObstacleAvoidanceAngle(left, it, targ, state)
-        # print(angle)
         offset = self.calculateObstacleOffset(it, s, a, dist)
         targ.x = targ.x + offset*cos(angle)
         targ.y = targ.y + offset*sin(angle)
@@ -124,9 +123,7 @@ class PIDSteeringController:
         for x in range(-10,11):
             angle = self.calcObstacleAvoidanceAngle(left, it + x, targ, state)
             offset = self.calculateObstacleOffset(it + x, s, a, -(((self.path.getDistance(self.obstacle.i) - self.path.getDistance(it + x))/self.gap)*10 - 5))
-            #tempObstacleAvoidancePathPoints.append(chrono.ChVectorD(self.path.getPoint(it+x).x + offset * cos(angle), self.path.getPoint(it+x).y + offset * sin(angle), 0.5))
-            tempObstacleAvoidancePathPoints.append([self.path.getPoint(it + x).x + offset * cos(angle),
-                                                                    self.path.getPoint(it + x).y + offset * sin(angle),])
+            tempObstacleAvoidancePathPoints.append([self.path.getPoint(it + x).x + offset * cos(angle), self.path.getPoint(it + x).y + offset * sin(angle),])
         return tempObstacleAvoidancePathPoints
 
 
@@ -164,7 +161,7 @@ class PIDSteeringController:
              except KeyError:
                 x = 0
 
-        # print(self.obstacleInRange)
+        print(self.obstacleInRange)
         if ist > loc and self.obstacleInRange:
             self.obstacleInRange = False
             self.gap = 0
@@ -181,9 +178,8 @@ class PIDSteeringController:
             #print("NEW Target Y: " + str(targ.y))
 
 
-        if hasattr(veh_model, 'ballS'):
-            veh_model.ballS.SetPos(self.sentinel)
-            veh_model.ballT.SetPos(targ)
+        veh_model.ballS.SetPos(self.sentinel)
+        veh_model.ballT.SetPos(targ)
 
         # The "error" vector is the projection onto the horizontal plane (z=0) of
         # vector between sentinel and target
