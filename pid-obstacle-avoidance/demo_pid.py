@@ -78,8 +78,10 @@ def main():
     i = 0
     while True:
         # Update controllers
-        steering, obstacleInRange = steering_controller.Advance(ch_step_size, chrono)
-        throttle, braking = throttle_controller.Advance(ch_step_size, chrono, obstacleInRange)
+        steering, obstacleInRange, tempObstacleAvoidancePath = steering_controller.Advance(ch_step_size, chrono)
+        throttle, braking = throttle_controller.Advance(ch_step_size, chrono, obstacleInRange, tempObstacleAvoidancePath)
+
+
         state = chrono.GetState()
 
         if chrono.vehicle.GetVehicleSpeed() < 7:
