@@ -36,7 +36,7 @@ def main():
     # Create obstacles
     # ----------------
     # Change n to add more obstacles
-    obstacles = RandomObstacleGenerator.generateObstacles(track.center, i_min=100, i_max=250, n=1, seed=seed*random.randint(0,90), reversed=reversed)
+    obstacles = RandomObstacleGenerator.generateObstacles(track.center, i_min=100, i_max=250, n=1, seed=seed*random.randint(0,90), reversed=reversed, movement_rate=5, movement_distance=1)
     
     print(obstacles) # Is a python dictionary
     # To access: obstacles[<path_index>] = position_vector
@@ -75,7 +75,6 @@ def main():
     ch_time = mat_time = 0
     while True:
         # Update controllers
-
         steering, obstacleInRange, tempObstacleAvoidancePath = steering_controller.Advance(ch_step_size, chrono)
         throttle, braking = throttle_controller.Advance(ch_step_size, chrono, obstacleInRange, tempObstacleAvoidancePath)
         state = chrono.GetState()
