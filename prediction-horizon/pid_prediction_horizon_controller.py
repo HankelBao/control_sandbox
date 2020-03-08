@@ -1,6 +1,7 @@
 import pychrono as chrono
 import numpy as np
 import math
+import matplotlib.pyplot as plt
 from control_utilities.track import Track
 from control_utilities.path import Path
 
@@ -26,7 +27,7 @@ class PIDPredictionHorizon:
 
         # self.tracker = path.tracker
 
-    def SetGains(self, Kp, Ki, Kd):
+    def setGains(self, Kp, Ki, Kd):
         self.Kp = Kp
         self.Ki = Ki
         self.Kd = Kd
@@ -42,7 +43,7 @@ class PIDPredictionHorizon:
     # subtract diff : error
     # derivative of last error
     # return path
-    def Advance(self, step, veh_model):
+    def advance(self, step, veh_model):
         """
         calculate horizonatal line across the path
         find the center of the line 
@@ -59,7 +60,7 @@ class PIDPredictionHorizon:
             self.dist * math.sin(state.yaw) + state.y,
             0,
         )
-        self.target = self.path.calcClosestPoint(self.sentinel)
+        #self.target = self.path.calcClosestPoint(self.sentinel)
         
         leftPath = Path(self.track.left)
         rightPath = Path(self.track.right)
@@ -71,9 +72,6 @@ class PIDPredictionHorizon:
         leftPoint = leftPath.calcClosestPoint(self.sentinal)
         rightPoint = rightPath.calcClosestPoint(self.sentinel)
 
-        # def line fuction
-        a = (leftPoint[1] - leftPoint[0]) / (rightPoint[1] - leftPoint[0])
-
-        b = leftPoint[0] - a * rightPoint[0]
-
+        # plot line
+        plt.plot(leftPoint, rightPoint)
 
