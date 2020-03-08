@@ -1,4 +1,5 @@
-import control_utilities.track
+from control_utilities.track import Track
+from control_utilities.path import Path
 from matplotlib import pyplot as plt
 import numpy as np
 import random
@@ -7,11 +8,116 @@ import math
 from copy import deepcopy
 import pychrono as chrono
 
-class TrackPath:
-    def __init__(self, track, a):
+class Segmentations:
+    def __init__(self, track, k_precision=0.800):
+        self.left = []
+        self.right = []
+        self.width = []
         self.track = track
-        self.size = track.center.x.size-1
+        self.size = 0
+        self.precision = k_precision
+
+    def create_segmentations(self):
+        k_sum = 0.0
+        for i in range(self.track.center.length):
+            k_sum += np.abs(self.track.center.k[i])
+            if k_sum >= self.precision:
+                k_sum = 0
+
+                self.left.append(self.track.left_waypoints[i])
+                self.right.append(self.track.right_waypoints[i])
+
+                self.size += 1
+
+    def get_point(self, index, a):
+        x1 = self.left[index][0]
+        y1 = self.left[index][1]
+        x2 = self.right[index][0]
+        y2 = self.right[index][1]
+        x = x1 + (x2-x1)*a
+        y = y1 + (y2-y1)*a
+        return (x, y)
+
+    def plot(self):
+        for i in range(self.size):
+            plt.plot([self.left[i][0], self.right[i][0]], [self.left[i][1], self.right[i][1]], "b-")
+
+class Cell:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.fCost = 0.0
+
+class RAStar:
+    def __init__(self, segmentation, neightbors_ratio=0.2, divisions=10):
+        # f(x) = g(x) + h(x)
+        self.segmentation = segmentation
+        self.neightbors = int(divisions*neightbors_ratio)
+        self.divisions = divisions
+        self.width = self.segmentation.size
+        self.height = self.divisions
+
+        self.t_break = 1+1/(self.width + self.height)
+        self.g_score = np.full([self.width, self.height], np.inf)
+        self.division_val = 1/divisions
+
+    def find_a(self, start_a):
+        start_y = int(start_a*self.divisions)
+        self.start_y = start_y
+
+        self.g_score[0][start_y] = 0
+        currentCell = Cell(0, start_y)
+        currentCell.fCost = self.g_score[0][start_y] + self.t_break*self.calc_heuristic(0, start_y)
+        opl = [ currentCell ]
+
+        while (np.min(self.g_score[self.width-1]) == np.inf):
+            cof_cell = heapq.nsmallest(1, opl, key=lambda k: k.fCost)[0]
+            opl.remove(cof_cell)
+
+            for cell in self.get_neighbours(cof_cell):
+                if self.g_score[cell.x][cell.y] == np.inf:
+                    self.g_score[cell.x][cell.y] = self.calc_gcost(cof_cell.x, cof_cell.y, cell.x, cell.y)
+                    cell.fCost = self.g_score[cell.x][cell.y] + self.t_break*self.calc_heuristic(cell.x, cell.y)
+
+                    if not any((cell.x == existing_cell.x and cell.y == existing_cell.y) for existing_cell in opl):
+                        opl.append(cell)
+
+            print(self.g_score)
+
+        currentCell = Cell(0, start_y)
+        a = [start_y]
+        while currentCell.x != self.width-1:
+            neighbours = self.get_neighbours(currentCell)
+            best_next = heapq.nsmallest(1, neighbours, key=lambda k:self.g_score[k.x][k.y])[0]
+            currentCell = best_next
+            a.append(currentCell.y)
+
+        a = np.array(a)
+        return a/self.divisions
+
+    def get_neighbours(self, cell):
+        y_min = max(0, cell.y-self.neightbors)
+        y_max = min(self.divisions, cell.y+self.neightbors)
+
+        neighbours = []
+        for i in range(y_min, y_max):
+            neighbours.append(Cell(cell.x+1, i))
+        return neighbours
+
+    def calc_gcost(self, x1, y1, x2, y2):
+        (px1, py1) = self.segmentation.get_point(x1, y1*self.division_val)
+        (px2, py2) = self.segmentation.get_point(x2, y2*self.division_val)
+        return self.g_score[x1][y1] + np.sqrt(np.square(px2-px1)+np.square(py2-py1))
+
+    def calc_heuristic(self, x, y):
+        # return np.abs(self.width-x) + np.abs(self.start_y-y)
+        return self.g_score[x][y]/x*(self.width-x)
+
+class TrackPath:
+    def __init__(self, segmentation, a):
+        self.segmentation = segmentation
         self.a = a
+        self.size = segmentation.size
 
         self.create_path()
         self.create_curvature()
@@ -19,18 +125,12 @@ class TrackPath:
         self.create_angle()
 
         self.point_adapt = 1/self.c
-        # self.point_adapt = 1/self.c+self.angle
-        self.adaptability = 1/np.average(np.power(self.c, 1))-1/np.max(self.c)+np.average(np.power(self.angle*2, 1))+np.min(self.angle)*2
-        # self.adaptability = 1/np.average(self.c) + np.average(np.power(self.angle, 1.5))
+        self.adaptability = 1/np.average(np.power(self.c, 2))+np.average(np.power(self.angle*2, 2))+np.min(self.angle)*2-np.average(self.distance)
 
-    def average_curvature(self):
-        return np.average(self.c)
-
-    def average_angle(self):
-        return np.average(self.angle)
-
-    def average_distance(self):
-        return np.average(self.distance)
+    def plot_path(self, color="r^-"):
+        x = np.append(self.x, self.x[0])
+        y = np.append(self.y, self.y[0])
+        plt.plot(x, y, color)
 
     def create_curvature(self):
         self.c = np.full(self.size, 0.0)
@@ -103,22 +203,14 @@ class TrackPath:
     def __distance(x1, y1, x2, y2):
         return np.sqrt(np.square(x2-x1)+np.square(y2-y1))
 
-    #def plot_sections(self):
-    #    plt.plot([self.track.left_waypoints.x, self.track.right_waypoints.x], [self.track.left_waypoints.y, self.track.right_waypoints.y], "g-")
-
-    def plot_path(self, color="r^-"):
-        x = np.append(self.x, self.x[0])
-        y = np.append(self.y, self.y[0])
-        plt.plot(x, y, color)
-
     def create_path(self):
         self.x = np.full(self.size, 0.0)
         self.y = np.full(self.size, 0.0)
         for i in range(self.size):
-            x1 = self.track.left_waypoints[i][0]
-            y1 = self.track.left_waypoints[i][1]
-            x2 = self.track.right_waypoints[i][0]
-            y2 = self.track.right_waypoints[i][1]
+            x1 = self.segmentation.left[i][0]
+            y1 = self.segmentation.left[i][1]
+            x2 = self.segmentation.right[i][0]
+            y2 = self.segmentation.right[i][1]
             self.x[i] = x1 + (x2-x1)*self.a[i]
             self.y[i] = y1 + (y2-y1)*self.a[i]
 
@@ -128,9 +220,9 @@ OPTIMIZE = 2
 EXTREME = 3
 
 class GAConfig():
-    def __init__(self, track):
-        self.track_size = track.center.x.size-1
-        self.initial_a = np.full(self.track_size, 0.5)
+    def __init__(self, segmentation):
+        self.segmentation_size = segmentation.size
+        self.initial_a = np.full(segmentation.size, 0.5)
         self.init_config()
 
     def init_config(self):
@@ -142,10 +234,10 @@ class GAConfig():
         self.cross_ratio = 0.4
         self.smutation_ratio = 0.4
         self.gmutation_ratio = 0.4
-        self.copy_ratio = 0.0
-        self.mutation_range = np.full(self.track_size, 0.5)
-        self.safe_boundary = 0.3
-        self.stablized_generation = 2
+        self.copy_ratio = 0
+        self.mutation_range = np.full(self.segmentation_size, 0.5)
+        self.safe_boundary = 0.1
+        self.stablized_generation = 40
 
     def optimize_config(self):
         self.state = OPTIMIZE
@@ -154,7 +246,7 @@ class GAConfig():
         self.smutation_ratio = 0.4
         self.gmutation_ratio = 0.2
         self.copy_ratio = 0.0
-        self.mutation_range = np.full(self.track_size, 0.3)
+        self.mutation_range = np.full(self.segmentation_size, 0.3)
         self.safe_boundary = 0.2
         self.stablized_generation = 6
 
@@ -165,7 +257,7 @@ class GAConfig():
         self.smutation_ratio = 0.4
         self.gmutation_ratio = 0.4
         self.copy_ratio = 0.0
-        self.mutation_range = np.full(self.track_size, 0.3)
+        self.mutation_range = np.full(self.segmentation_size, 0.3)
         self.safe_boundary = 0.1
         self.stablized_generation = 10
 
@@ -181,27 +273,28 @@ class GAConfig():
             return
 
     def upgradable(self):
-        if self.state == EXTREME:
+        if self.state == SEARCH:
             return False
         return True
 
 
 class GAPathGenerator:
-    def __init__(self, track, config):
-        self.track = track
-        self.track_points = self.track.center.x.size-1
+    def __init__(self, segmentation, config):
+        self.segmentation = segmentation
+        self.s_size = segmentation.size
         self.path = []
         self.selection_p = []
 
-        self.population_size = int(self.track_points*config.population_ratio)
-        self.cross_size = int(self.track_points*config.cross_ratio)
-        self.smutation_size = int(self.track_points*config.smutation_ratio)
-        self.gmutation_size = int(self.track_points*config.gmutation_ratio)
-        self.copy_size = int(self.track_points*config.copy_ratio)
+        s_size = segmentation.size
+        self.population_size = int(s_size*config.population_ratio)
+        self.cross_size = int(s_size*config.cross_ratio)
+        self.smutation_size = int(s_size*config.smutation_ratio)
+        self.gmutation_size = int(s_size*config.gmutation_ratio)
+        self.copy_size = int(s_size*config.copy_ratio)
 
         self.config = config
-        self.a_min = np.maximum(config.initial_a-config.mutation_range, np.full(self.track_points, config.safe_boundary))
-        self.a_max = np.minimum(config.initial_a+config.mutation_range, np.full(self.track_points, 1-config.safe_boundary))
+        self.a_min = np.maximum(config.initial_a-config.mutation_range, np.full(s_size, config.safe_boundary))
+        self.a_max = np.minimum(config.initial_a+config.mutation_range, np.full(s_size, 1-config.safe_boundary))
 
         self.best_path = None
         self.stablized_adaptability = 0.0
@@ -221,19 +314,23 @@ class GAPathGenerator:
     def init_generation(self):
         for _ in range(self.population_size):
             a = np.random.uniform(self.a_min, self.a_max)
-            self.path.append(TrackPath(self.track, a))
+            self.path.append(TrackPath(self.segmentation, a))
 
     def next_generation(self):
         for _ in range(self.cross_size):
             self.cross()
 
+        for _ in range(int(self.cross_size)):
+            self.gcross()
+
         for _ in range(self.smutation_size):
             self.selected_mutation()
 
+        for _ in range(int(self.smutation_size*0.3)):
+            self.peek_mutation()
+
         for _ in range(self.gmutation_size):
             self.general_mutation()
-
-        self.copy(self.copy_size)
 
     def rws(self):
         sum = 0
@@ -251,16 +348,50 @@ class GAPathGenerator:
         path2 = self.path[self.rws()]
 
         a = []
-        for i in range(self.track_points):
+        for i in range(self.s_size):
             if path1.point_adapt[i] > path2.point_adapt[i]:
                 a.append(path1.a[i])
             else:
                 a.append(path2.a[i])
 
         a = np.array(a)
-        self.path.append(TrackPath(self.track, a))
+        self.path.append(TrackPath(self.segmentation, a))
+
+    def gcross(self):
+        path1 = self.path[self.rws()]
+        path2 = self.path[self.rws()]
+
+        index = random.randint(1, self.s_size-1)
+        a = np.append(path1.a[:index], path2.a[index:])
+        self.path.append(TrackPath(self.segmentation, a))
 
     def selected_mutation(self):
+        def local_rws(path):
+            rand = random.uniform(0, 1)
+            adapt_sum = np.sum(path.point_adapt)
+            sum = 0.0
+            for i in range(len(path.point_adapt)):
+                sum += path.point_adapt[i]/adapt_sum
+                if sum >= rand:
+                    return i
+            return len(path.point_adapt)-1
+
+        path = self.path[self.rws()]
+        a = deepcopy(path.a)
+
+        index = local_rws(path)
+        a[index] = np.random.uniform(0, 1)
+        influence_range = 0 #random.randint(0, 1)
+        for i in range(influence_range):
+            try:
+                a[index-i] = np.random.uniform(self.a_min[index-i], self.a_max[index-i])
+                a[index+i] = np.random.uniform(self.a_min[index-i], self.a_max[index+i])
+            except:
+                pass
+
+        self.path.append(TrackPath(self.segmentation, a))
+
+    def peek_mutation(self):
         path = self.path[self.rws()]
         a = deepcopy(path.a)
         worst_a = np.min(path.point_adapt)
@@ -276,14 +407,14 @@ class GAPathGenerator:
                 except:
                     pass
 
-        self.path.append(TrackPath(self.track, a))
+        self.path.append(TrackPath(self.segmentation, a))
 
     def general_mutation(self):
         path = self.path[self.rws()]
         a = deepcopy(path.a)
-        index = random.randint(0, self.track_points-1)
+        index = random.randint(0, self.s_size-1)
         a[index] = np.random.uniform(0, 1)
-        self.path.append(TrackPath(self.track, a))
+        self.path.append(TrackPath(self.segmentation, a))
 
     def copy(self, times):
         largest = heapq.nlargest(times, self.path, key=lambda k: k.adaptability)
