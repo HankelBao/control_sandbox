@@ -1,6 +1,8 @@
 from control_utilities.chrono import ChronoSim, GetInitPose
 from control_utilities.track import RandomTrack
 from control_utilities.matplotlib import MatSim
+from control_utilities.track import RandomTrack, Track
+from control_utilities.path import Path
 
 from pid_controller import PIDSteeringController, PIDThrottleController
 
@@ -15,8 +17,8 @@ def main():
         seed = random.randint(0,100)
 
     # Render preferences
-    matplotlib = 0
-    irrlicht = 1
+    matplotlib = 1
+    irrlicht = 0
 
     # Chrono Simulation step size
     ch_step_size = 1e-2
@@ -30,8 +32,34 @@ def main():
     track = RandomTrack()
     track.generateTrack(seed=seed, reversed=reversed)
     print('Using seed :: {}'.format(seed))
-    
-    
+
+    # print("FIRST 5 POINTS OF INITIAL PATH:")
+    # for i in range(5):
+    #     print(track.center.getPoint(i))
+
+    # --------------------- ----
+    # Generate centerline array
+    # -------------------------
+    center = [] # array of centerline points
+
+    for i in range(track.num_points):
+        leftPt = track.left.getPoint(i)
+        rightPt = track.right.getPoint(i)
+
+        centerX = (leftPt.x + rightPt.x) / 2
+        centerY = (leftPt.y + rightPt.y) / 2
+
+        center.append([centerX, centerY])
+
+    # print("FIRST 5 POINTS OF CENTER PATH:")
+    # for i in range(5):
+    #     print(track.center.getPoint(i))
+
+    # ------------------------------------
+    # Create new track based on centerline
+    # ------------------------------------
+    track = Track(center)
+    track.generateTrack()
 
     # --------------------
     # Create controller(s)
