@@ -312,7 +312,8 @@ class GAPathGenerator:
             self.selection_p.append(self.path[i].adaptability/adaptability_sum)
 
     def init_generation(self):
-        for _ in range(self.population_size):
+        self.path.append(TrackPath(self.segmentation, self.config.initial_a))
+        for _ in range(self.population_size-1):
             a = np.random.uniform(self.a_min, self.a_max)
             self.path.append(TrackPath(self.segmentation, a))
 

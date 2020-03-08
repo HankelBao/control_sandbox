@@ -64,58 +64,59 @@ def main():
     rastar = RAStar(segmentation, neightbors_ratio=0.2, divisions=10)
     a = rastar.find_a(0.5)
 
-    path = TrackPath(segmentation, a)
-    path.plot_path()
+    # path = TrackPath(segmentation, a)
+    # path.plot_path()
 
     compare_track = Track(points)
     compare_track.generateTrack()
-    compare_track.plot(show=False, centerline=False)
+    # compare_track.plot(show=False, centerline=False)
 
-    plt.show()
+    # plt.show()
 
-    # plt.ion()
+    plt.ion()
 
-    # config = GAConfig(segmentation)
-    # generation = 0
-    # stable_path = None
-    # stable_generation = 0
-    # save = False
+    config = GAConfig(segmentation)
+    config.initial_a = a
+    generation = 0
+    stable_path = None
+    stable_generation = 0
+    save = False
 
-    # while (config.upgradable()):
-    #     print("Upgraded")
-    #     print(config.state)
-    #     config.upgrade()
-    #     generator = GAPathGenerator(segmentation, config)
+    while (config.upgradable()):
+        print("Upgraded")
+        print(config.state)
+        config.upgrade()
+        generator = GAPathGenerator(segmentation, config)
 
-    #     while generator.stablized_generation < config.stablized_generation:
-    #         generator.ga_advance()
+        while generator.stablized_generation < config.stablized_generation:
+            generator.ga_advance()
 
-    #         segmentation.plot()
-    #         generator.plot_best_path()
-    #         compare_track.plot(centerline=False, show=False)
+            segmentation.plot()
+            generator.plot_best_path()
+            compare_track.plot(centerline=False, show=False)
 
-    #         print(1/np.average(generator.best_path.c))
+            print(1/np.average(generator.best_path.c))
 
-    #         if stable_path:
-    #             stable_path.plot_path("g-")
+            if stable_path:
+                stable_path.plot_path("g-")
 
-    #         plt.show()
+            plt.show()
 
-    #         generation += 1
-    #         if save:
-    #             plt.savefig("fig"+str(generation)+".png")
+            generation += 1
+            if save:
+                plt.savefig("fig"+str(generation)+".png")
 
-    #         plt.pause(0.01)
-    #         plt.clf()
+            plt.pause(0.01)
+            plt.clf()
 
-    #     stable_path = generator.best_path
-    #     config.initial_a = stable_path.a
+        stable_path = generator.best_path
+        config.initial_a = stable_path.a
 
-    #     stable_path.plot_path("g-")
-    #     compare_track.plot(centerline=False, show=False)
-    #     plt.show()
-    #     if save:
-    #         plt.savefig("fig"+str(generation)+"-stable.png")
+        stable_path.plot_path("g-")
+        compare_track.plot(centerline=False, show=False)
+        plt.show()
+        if save:
+            plt.savefig("fig"+str(generation)+"-stable.png")
 
 
     # center = []
