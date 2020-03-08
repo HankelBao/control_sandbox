@@ -230,6 +230,17 @@ class GAConfig():
 
     def search_config(self):
         self.state = SEARCH
+        self.population_ratio = 0.5
+        self.cross_ratio = 0.4
+        self.smutation_ratio = 0.4
+        self.gmutation_ratio = 0.4
+        self.copy_ratio = 0
+        self.mutation_range = np.full(self.segmentation_size, 0.5)
+        self.safe_boundary = 0.3
+        self.stablized_generation = 40
+
+    def optimize_config(self):
+        self.state = OPTIMIZE
         self.population_ratio = 1
         self.cross_ratio = 0.4
         self.smutation_ratio = 0.4
@@ -238,17 +249,6 @@ class GAConfig():
         self.mutation_range = np.full(self.segmentation_size, 0.5)
         self.safe_boundary = 0.1
         self.stablized_generation = 40
-
-    def optimize_config(self):
-        self.state = OPTIMIZE
-        self.population_ratio = 5
-        self.cross_ratio = 0.4
-        self.smutation_ratio = 0.4
-        self.gmutation_ratio = 0.2
-        self.copy_ratio = 0.0
-        self.mutation_range = np.full(self.segmentation_size, 0.3)
-        self.safe_boundary = 0.2
-        self.stablized_generation = 6
 
     def extreme_config(self):
         self.state = EXTREME
@@ -324,10 +324,10 @@ class GAPathGenerator:
         for _ in range(int(self.cross_size)):
             self.gcross()
 
-        for _ in range(self.smutation_size):
+        for _ in range(int(self.smutation_size*0.0)):
             self.selected_mutation()
 
-        for _ in range(int(self.smutation_size*0.3)):
+        for _ in range(int(self.smutation_size)):
             self.peek_mutation()
 
         for _ in range(self.gmutation_size):
@@ -400,7 +400,7 @@ class GAPathGenerator:
         places = np.where(path.point_adapt == worst_a)
         for index in places:
             a[index] = np.random.uniform(0, 1)
-            influence_range = random.randint(0, 3)
+            influence_range = 0 #random.randint(0, 3)
             for i in range(influence_range):
                 try:
                     a[index-i] = np.random.uniform(self.a_min[index-i], self.a_max[index-i])
