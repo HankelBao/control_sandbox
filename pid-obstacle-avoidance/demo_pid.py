@@ -28,6 +28,7 @@ def main():
     # Create track
     # ------------
     reversed = random.randint(0,1)
+
     track = RandomTrack(x_max=200, y_max=200, width=10)
     track.generateTrack(seed=seed, reversed=reversed)
     print('Using seed :: {}'.format(seed))
@@ -36,8 +37,9 @@ def main():
     # Create obstacles
     # ----------------
     # Change n to add more obstacles
+
     obstacles = RandomObstacleGenerator.generateObstacles(track.center, i_min=50, i_max=60, n=1, seed=seed*random.randint(0,90), reversed=reversed, movement_rate=5, movement_distance=1)
-    
+
     print(obstacles) # Is a python dictionary
     # To access: obstacles[<path_index>] = position_vector
 
@@ -65,7 +67,8 @@ def main():
         initRot=initRot,
         irrlicht=irrlicht,
         obstacles=obstacles,
-        vis_balls=True
+        vis_balls=True,
+        draw_barriers=True
     )
 
 
