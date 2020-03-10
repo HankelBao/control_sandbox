@@ -28,7 +28,7 @@ def main():
     # Create track
     # ------------
     reversed = random.randint(0,1)
-    track = RandomTrack()
+    track = RandomTrack(x_max=200, y_max=200, width=10)
     track.generateTrack(seed=seed, reversed=reversed)
     print('Using seed :: {}'.format(seed))
 
@@ -36,7 +36,7 @@ def main():
     # Create obstacles
     # ----------------
     # Change n to add more obstacles
-    obstacles = RandomObstacleGenerator.generateObstacles(track.center, i_min=100, i_max=250, n=1, seed=seed*random.randint(0,90), reversed=reversed, movement_rate=5, movement_distance=1)
+    obstacles = RandomObstacleGenerator.generateObstacles(track.center, i_min=50, i_max=60, n=1, seed=seed*random.randint(0,90), reversed=reversed, movement_rate=5, movement_distance=1)
     
     print(obstacles) # Is a python dictionary
     # To access: obstacles[<path_index>] = position_vector
@@ -45,10 +45,10 @@ def main():
     # --------------------
     # Create controller(s)
     # --------------------
-    steering_controller = PIDSteeringController(track.center, obstacles)
+    steering_controller = PIDSteeringController(track, obstacles)
     steering_controller.SetGains(Kp=0.4, Ki=0, Kd=0.3)
     steering_controller.SetLookAheadDistance(lookDist=5)
-    steering_controller.SetObstacleDistance(obsDist=75)
+    steering_controller.SetObstacleDistance(obsDist=50)
     # steering_controller.initTracker(track.center)
 
     throttle_controller = PIDThrottleController(track.center)
