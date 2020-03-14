@@ -1,4 +1,5 @@
-from control_utilities.chrono import ChronoSim, GetInitPose
+from control_utilities.chrono import ChronoSim
+from control_utilities.chrono_utilities import calcPose
 from control_utilities.track import RandomTrack
 from control_utilities.matplotlib import MatSim
 from control_utilities.obstacle import RandomObstacleGenerator
@@ -29,7 +30,7 @@ def main():
     # ------------
     reversed = random.randint(0,1)
 
-    track = RandomTrack(x_max=200, y_max=200, width=10)
+    track = RandomTrack(x_max=200, y_max=200, width=20)
     track.generateTrack(seed=seed, reversed=reversed)
     print('Using seed :: {}'.format(seed))
 
@@ -58,7 +59,7 @@ def main():
     throttle_controller.SetLookAheadDistance(dist=5)
     throttle_controller.SetTargetSpeed(speed=6.0)
 
-    initLoc, initRot = GetInitPose([track.center.x[0],track.center.y[0]], [track.center.x[1],track.center.y[1]], reversed=reversed)
+    initLoc, initRot = calcPose([track.center.x[0],track.center.y[0]], [track.center.x[1],track.center.y[1]])
 
     chrono = ChronoSim(
         step_size=ch_step_size,

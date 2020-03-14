@@ -9,6 +9,7 @@ env
 *.png
 *.jpg
 *.mp4
+.vscode/
 
 # C extensions
 *.so

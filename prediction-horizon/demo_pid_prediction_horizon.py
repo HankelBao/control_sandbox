@@ -1,4 +1,5 @@
-from control_utilities.chrono import ChronoSim, GetInitPose
+from control_utilities.chrono import ChronoSim
+from control_utilities.chrono_utilities import calcPose
 from control_utilities.track import RandomTrack
 from control_utilities.matplotlib import MatSim
 
@@ -46,7 +47,7 @@ def main():
     throttle_controller.SetTargetSpeed(speed=10.0)
 
 
-    initLoc, initRot = GetInitPose([track.center.x[0],track.center.y[0]], [track.center.x[1],track.center.y[1]], reversed=reversed)
+    initLoc, initRot = calcPose([track.center.x[0],track.center.y[0]], [track.center.x[1],track.center.y[1]])
 
     chrono = ChronoSim(
         step_size=ch_step_size,
