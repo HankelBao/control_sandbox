@@ -59,17 +59,21 @@ def main():
 
     segmentation = Segmentations(track, k_precision=0.8)
     segmentation.create_segmentations()
+    # segmentation.plot()
 
     # rastar = RAStar(segmentation, neightbors_ratio=0.2, divisions=10)
     # a = rastar.find_a(0.5)
 
-    # a = 0.0 * segmentation.width
-    # path = TrackPath(segmentation, a)
-    # path.plot_path()
+    a = 0.5 * segmentation.width
+    path = TrackPath(segmentation, a)
+    path.generate_final_path()
+    path.plot_final_path()
 
     compare_track = Track(points)
     compare_track.generateTrack()
-    # compare_track.plot(show=False, centerline=False)
+    #compare_track.plot(show=False, centerline=False)
+
+    plt.show()
 
     # plt.show()
 
@@ -119,6 +123,12 @@ def main():
         plt.show()
         if save:
             plt.savefig("fig"+str(generation)+"-stable.png")
+
+    plt.clf()
+    stable_path.generate_final_path()
+    stable_path.plot_final_path()
+    plt.show()
+    plt.pause(100)
 
 
     # center = []
