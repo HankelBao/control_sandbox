@@ -5,15 +5,15 @@ from math import atan
 from math import cos
 from math import sin
 from math import pi
+from control_utilities.path import Path
 from matplotlib import pyplot as plt
 
 
 class PIDSteeringController:
-    def __init__(self, path, obstacles):
+    def __init__(self, track, obstacles):
         self.Kp = 0
         self.Ki = 0
         self.Kd = 0
-
         self.lookDist = 0
         self.obsDist = 0
         self.target = chrono.ChVectorD(0, 0, 0)
@@ -24,13 +24,16 @@ class PIDSteeringController:
         self.errd = 0
         self.erri = 0
 
-        self.path = path
+        self.track = track
+        self.path = track.center
 
         self.obstacles = obstacles
         self.gap = 0
         self.distanceToObstacle = 0
         # self.tracker = path.tracker
         self.obstacleInRange = False
+
+        self.tempObstacleAvoidancePath = ()
 
     def SetGains(self, Kp, Ki, Kd):
         self.Kp = Kp
@@ -48,8 +51,9 @@ class PIDSteeringController:
         p2 = self.path.getPoint(it + 1)
         obsp1x = self.obstacle.p1.x
         obsp2x = self.obstacle.p2.x
-        obsp1y = self.obstacle.p1.y
         angle = 0
+
+
 
         x = 0
         if obsp2x > obsp1x and p2.x >= p1.x:
@@ -102,16 +106,37 @@ class PIDSteeringController:
     #        wayPointY = centerY + s*sin(angle)
     #    return wayPointX, wayPointY
 
-    def calculateObstacleOffset(self, s, obstacle, a, dist):
-        offset = s/(1 + math.exp(-a*(dist)))
+    def sigmoidFunction(self, s, a, x):
+        return s/(1 + math.exp(-a*(x)))
+
+    def calculateObstacleOffset(self, s, a, dist):
+        offset = self.sigmoidFunction(s, a, dist)
         return offset
 
-    def alterTargetForObstacle(self, it, left, s, obstacle, a, dist, targ, state):
+    def alterTargetForObstacle(self, it, left, s, a, dist, targ, state):
         angle = self.calcObstacleAvoidanceAngle(left, it, targ, state)
-        print(angle)
-        offset = self.calculateObstacleOffset(s, obstacle, a, dist)
+        offset = self.calculateObstacleOffset(s, a, dist)
         targ.x = targ.x + offset*cos(angle)
         targ.y = targ.y + offset*sin(angle)
+
+
+    def generateTempObstacleAvoidancePath(self, loc, ist, it, left, s, a, targ, state):
+        tempObstacleAvoidancePathPoints = []
+        path = self.path
+        print(loc - ist)
+        for x in range(-5, loc - ist  + 1):
+            angle = self.calcObstacleAvoidanceAngle(left, it + x, targ, state)
+            offset = self.calculateObstacleOffset(s, a, -(((path.getDistance(loc) - path.getDistance(it + x))/self.gap)*10 - 5))
+            tempObstacleAvoidancePathPoints.append([path.getPoint(it + x).x + offset * cos(angle), path.getPoint(it + x).y + offset * sin(angle)])
+        return tempObstacleAvoidancePathPoints
+
+    def predictObstacleIndex(self):
+        return round(self.obstacle.i + self.parallelObstacleTime()*self.obstacle.movement_rate)
+
+    def parallelObstacleTime(self):
+        return 5
+
+
 
 
     def Advance(self, step, veh_model):
@@ -142,19 +167,38 @@ class PIDSteeringController:
                 self.obstacleInRange = True
                 if self.gap == 0:
                     self.gap = self.path.getDistance(loc) - self.path.getDistance(it)
+                elif self.path.getDistance(loc) - self.path.getDistance(it) > self.gap:
+                    self.gap = self.path.getDistance(loc) - self.path.getDistance(it)
              except KeyError:
                 x = 0
 
-        print(self.obstacleInRange)
         if ist > loc and self.obstacleInRange:
             self.obstacleInRange = False
             self.gap = 0
+            self.tempObstacleAvoidancePath = ()
 
+        tempObstacleAvoidancePath = ()
         if self.obstacleInRange:
+            self.och_time = self.obstacle.ch_time
             self.distanceToObstacle = self.path.getDistance(loc) - self.path.getDistance(it)
-            self.alterTargetForObstacle(it, False, 10, self.obstacle, 0.75, -((self.distanceToObstacle/self.gap)*10 - 5), targ, state)
-            #print("NEW Target X: " + str(targ.x))
-            #print("NEW Target Y: " + str(targ.y))
+            if self.distanceToObstacle < 1000:
+                #self.gap = 50
+                left = True
+                if self.path.getCurvature(it) < 0:
+                   left = False
+                self.alterTargetForObstacle(it=it, left=left, s=5, a=0.75, dist=-((self.distanceToObstacle/self.gap)*10 - 5), targ=targ, state=state)
+                tempObstacleAvoidancePathArray = self.generateTempObstacleAvoidancePath(loc, ist, it, left, 5, 0.75, targ, state)
+                #self.tempObstacleAvoidancePath = Path(tempObstacleAvoidancePathArray, loc-it + 10)
+                self.tempObstacleAvoidancePath = Path(tempObstacleAvoidancePathArray, 100, per=False)
+
+                #print("Index: " + str(self.obstacle.i))
+                #print("Predict: " + str(self.predictObstacleIndex()))
+                #print(self.obstacle.ch_time)
+            else:
+                self.obstacleInRange = False
+
+                #print("NEW Target X: " + str(targ.x))
+                #print("NEW Target Y: " + str(targ.y))
 
 
         veh_model.ballS.SetPos(self.sentinel)
@@ -186,7 +230,7 @@ class PIDSteeringController:
             self.Kp * self.err + self.Ki * self.erri + self.Kd * self.errd, -1.0, 1.0
         )
 
-        return self.steering
+        return self.steering, self.obstacleInRange, self.tempObstacleAvoidancePath
 
     def calcSign(self, veh_model, targ):
         """
@@ -235,7 +279,7 @@ class PIDThrottleController:
     def SetTargetSpeed(self, speed):
         self.target_speed = speed
 
-    def Advance(self, step, veh_model):
+    def Advance(self, step, veh_model, obstacleInRange, tempObstacleAvoidancePath):
         state = veh_model.GetState()
         self.sentinel = chrono.ChVectorD(
             self.dist * math.cos(state.yaw) + state.x,
@@ -243,12 +287,18 @@ class PIDThrottleController:
             0,
         )
 
-        self.target = self.path.calcClosestPoint(self.sentinel)
 
-        #self.target_speed = self.path.calcSpeed(self.target)
+        self.target = self.path.calcClosestPoint(self.sentinel)
+        self.target_speed = self.path.calcSpeed(self.target)
+
+        if obstacleInRange:
+            self.target_speed = tempObstacleAvoidancePath.calcSpeed(self.target)
+
+        #print(self.target_speed)
 
         self.speed = veh_model.GetState().v
-        # print(self.speed)
+
+        #print(self.speed)
 
         # Calculate current error
         err = self.target_speed - self.speed

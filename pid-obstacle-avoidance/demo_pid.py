@@ -1,4 +1,5 @@
-from control_utilities.chrono import ChronoSim, GetInitPose
+from control_utilities.chrono import ChronoSim
+from control_utilities.chrono_utilities import calcPose
 from control_utilities.track import RandomTrack
 from control_utilities.matplotlib import MatSim
 from control_utilities.obstacle import RandomObstacleGenerator
@@ -28,7 +29,8 @@ def main():
     # Create track
     # ------------
     reversed = random.randint(0,1)
-    track = RandomTrack()
+
+    track = RandomTrack(x_max=200, y_max=200, width=20)
     track.generateTrack(seed=seed, reversed=reversed)
     print('Using seed :: {}'.format(seed))
 
@@ -36,8 +38,9 @@ def main():
     # Create obstacles
     # ----------------
     # Change n to add more obstacles
-    obstacles = RandomObstacleGenerator.generateObstacles(track.center, i_min=100, i_max=250, n=1, seed=seed*random.randint(0,90), reversed=reversed)
-    
+
+    obstacles = RandomObstacleGenerator.generateObstacles(track.center, i_min=50, i_max=60, n=1, seed=seed*random.randint(0,90), reversed=reversed, movement_rate=5, movement_distance=1)
+
     print(obstacles) # Is a python dictionary
     # To access: obstacles[<path_index>] = position_vector
 
@@ -45,10 +48,10 @@ def main():
     # --------------------
     # Create controller(s)
     # --------------------
-    steering_controller = PIDSteeringController(track.center, obstacles)
+    steering_controller = PIDSteeringController(track, obstacles)
     steering_controller.SetGains(Kp=0.4, Ki=0, Kd=0.3)
     steering_controller.SetLookAheadDistance(lookDist=5)
-    steering_controller.SetObstacleDistance(obsDist=75)
+    steering_controller.SetObstacleDistance(obsDist=50)
     # steering_controller.initTracker(track.center)
 
     throttle_controller = PIDThrottleController(track.center)
@@ -56,7 +59,7 @@ def main():
     throttle_controller.SetLookAheadDistance(dist=5)
     throttle_controller.SetTargetSpeed(speed=6.0)
 
-    initLoc, initRot = GetInitPose([track.center.x[0],track.center.y[0]], [track.center.x[1],track.center.y[1]], reversed=reversed)
+    initLoc, initRot = calcPose([track.center.x[0],track.center.y[0]], [track.center.x[1],track.center.y[1]])
 
     chrono = ChronoSim(
         step_size=ch_step_size,
@@ -65,7 +68,8 @@ def main():
         initRot=initRot,
         irrlicht=irrlicht,
         obstacles=obstacles,
-        vis_balls=True
+        vis_balls=True,
+        draw_barriers=True
     )
 
 
@@ -75,9 +79,8 @@ def main():
     ch_time = mat_time = 0
     while True:
         # Update controllers
-        steering = steering_controller.Advance(ch_step_size, chrono)
-        throttle, braking = throttle_controller.Advance(ch_step_size, chrono)
-        
+        steering, obstacleInRange, tempObstacleAvoidancePath = steering_controller.Advance(ch_step_size, chrono)
+        throttle, braking = throttle_controller.Advance(ch_step_size, chrono, obstacleInRange, tempObstacleAvoidancePath)
         state = chrono.GetState()
 
         if chrono.vehicle.GetVehicleSpeed() < 7:

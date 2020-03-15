@@ -3,7 +3,8 @@ from control_utilities.chrono_utilities import calcPose
 from control_utilities.track import RandomTrack
 from control_utilities.matplotlib import MatSim
 
-from mpc_controller import MPCController
+from pid_controller import PIDSteeringController, PIDThrottleController
+from pid_prediction_horizon_controller import PIDPredictionHorizon
 
 import random
 import sys
@@ -16,8 +17,8 @@ def main():
         seed = random.randint(0,100)
 
     # Render preferences
-    matplotlib = 0
-    irrlicht = 1
+    matplotlib = 1
+    irrlicht = 0
 
     # Chrono Simulation step size
     ch_step_size = 1e-2
@@ -35,13 +36,19 @@ def main():
     # --------------------
     # Create controller(s)
     # --------------------
-    mpc_controller = MPCController()
+    prediction_horizon =  PIDPredictionHorizon(track)
+    steering_controller = PIDSteeringController(track.center)
+    steering_controller.SetGains(Kp=0.4, Ki=0, Kd=0.25)
+    steering_controller.SetLookAheadDistance(dist=5)
+    # steering_controller.initTracker(track.center)
 
-    # Get initial pose (position and orientation)
-    # TODO: Replace within some utilities file
+    throttle_controller = PIDThrottleController()
+    throttle_controller.SetGains(Kp=0.4, Ki=0, Kd=0)
+    throttle_controller.SetTargetSpeed(speed=10.0)
+
+
     initLoc, initRot = calcPose([track.center.x[0],track.center.y[0]], [track.center.x[1],track.center.y[1]])
 
-    # Create the chrono simulator wrapper object
     chrono = ChronoSim(
         step_size=ch_step_size,
         track=track,
@@ -50,19 +57,19 @@ def main():
         irrlicht=irrlicht,
     )
 
-    mpc_controller.UpdateState(chrono)
-
-    # Create matplotlib simulator
     mat = MatSim(mat_step_size)
 
     ch_time = mat_time = 0
     while True:
-        # Update controller
-        throttle, steering, braking = mpc_controller.Advance(ch_step_size, chrono)
+        # Update controllers
+
+        steering = steering_controller.Advance(ch_step_size, chrono)
+        throttle, braking = throttle_controller.Advance(ch_step_size, chrono)
 
         chrono.driver.SetTargetSteering(steering)
         chrono.driver.SetTargetThrottle(throttle)
         chrono.driver.SetTargetBraking(braking)
+        prediction_horizon.advance(ch_step_size, chrono)
 
         if chrono.Advance(ch_step_size) == -1:
             chrono.Close()
