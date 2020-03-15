@@ -4,7 +4,7 @@ from control_utilities.chrono_terrain import ChronoTerrain
 from control_utilities.chrono_utilities import calcPose, createChronoSystem, setDataDirectory
 from control_utilities.obstacle import RandomObstacleGenerator
 from control_utilities.track import RandomTrack
-from control_utilities.matplotlib import MatSim
+from control_utilities.matplotlib_wrapper import MatplotlibWrapper
 
 from pid_controller import PIDController, PIDLateralController, PIDLongitudinalController
 
@@ -19,7 +19,7 @@ def main():
         seed = random.randint(0,100)
 
     # Render preferences
-    matplotlib = 0
+    matplotlib = 1
     irrlicht = 1
 
     # Chrono Simulation step size
@@ -83,8 +83,9 @@ def main():
     # Create chrono wrapper
     chrono_wrapper = ChronoWrapper(ch_step_size, system, track, vehicle, terrain, irrlicht=irrlicht, obstacles=obstacles, draw_barriers=True)
 
-    # mat = MatSim(mat_step_size)
-
+    if matplotlib:
+        matplotlib_wrapper = MatplotlibWrapper(mat_step_size, vehicle, obstacles=obstacles, render_step_size=1.0/20)
+        matplotlib_wrapper.plotTrack(track)
 
     ch_time = mat_time = 0
     while True:
@@ -103,9 +104,9 @@ def main():
             break
 
         if matplotlib and ch_time >= mat_time:
-            if mat.plot(track, chrono, obstacles) == -1:
+            if not matplotlib_wrapper.Advance(mat_step_size):
                 print("Quit message received.")
-                mat.close()
+                matplotlib_wrapper.close()
                 break
             mat_time += mat_step_size
 

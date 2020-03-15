@@ -4,15 +4,15 @@ from control_utilities.chrono_terrain import ChronoTerrain
 from control_utilities.chrono_utilities import calcPose, createChronoSystem, setDataDirectory
 from control_utilities.track import RandomTrack
 from control_utilities.matplotlib_wrapper import MatplotlibWrapper
+from pyqtgraph_wrapper import PyQtGraphWrapper
 
 from pid_controller import PIDController, PIDLateralController, PIDLongitudinalController
-from pid_prediction_horizon_controller import PIDPredictionHorizon
 
 import random
 import sys
+import time
 
 def main():
-    global first, time
     if len(sys.argv) == 2:
         seed = int(sys.argv[1])
     else:
@@ -20,12 +20,15 @@ def main():
 
     # Render preferences
     matplotlib = 0
-    irrlicht = 1
+    pyqtgraph = 1
+    irrlicht = 0
 
-    # Chrono Simulation step size
+    # Chrono simulation step size
     ch_step_size = 1e-2
-    # Matplotlib Simulation step size
+    # Matplotlib visualization step size
     mat_step_size = 1e-2
+    # PyQtGraph visualization step size
+    pyqt_step_size = 1e-2
 
     # ------------
     # Create track
@@ -38,7 +41,6 @@ def main():
     # --------------------
     # Create controller(s)
     # --------------------
-    prediction_horizon =  PIDPredictionHorizon(track)
 
     # Lateral controller (steering)
     lat_controller = PIDLateralController(track.center)
@@ -76,8 +78,13 @@ def main():
     if matplotlib:
         matplotlib_wrapper = MatplotlibWrapper(mat_step_size, vehicle, render_step_size=1.0/20)
         matplotlib_wrapper.plotTrack(track)
+    elif pyqtgraph:
+        pyqtgraph_wrapper = PyQtGraphWrapper(pyqt_step_size, vehicle, render_step_size=1.0/20)
+        pyqtgraph_wrapper.plotTrack(track)
+        pyqtgraph_wrapper.exec()
 
-    ch_time = mat_time = 0
+    ch_time = mat_time = pyqt_time = 0
+    updates = total_time = 0.0
     while True:
         if chrono_wrapper.Advance(ch_step_size) == -1:
             chrono_wrapper.Close()
@@ -85,7 +92,6 @@ def main():
 
         # Update controller
         controller.Advance(ch_step_size, vehicle)
-        prediction_horizon.Advance(ch_step_size, vehicle)
 
         if matplotlib and ch_time >= mat_time:
             if not matplotlib_wrapper.Advance(mat_step_size):
@@ -94,10 +100,19 @@ def main():
                 break
             mat_time += mat_step_size
 
+        if pyqtgraph and ch_time >= pyqt_time:
+            if not pyqtgraph_wrapper.Advance(pyqt_step_size):
+                print("Quit message received.")
+                pyqtgraph_wrapper.close()
+                break
+            pyqt_time += pyqt_step_size
+
         ch_time += ch_step_size
 
         if ch_time > 50:
             break
+        updates += 1.0
+    # print('Update Summary:\n\tChrono Time :: {0:0.2f}\n\tTime per Update :: {1:0.5f}'.format(ch_time, total_time / updates))
     print("Exited")
     pass
 

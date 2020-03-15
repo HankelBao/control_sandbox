@@ -3,12 +3,14 @@ from control_utilities.chrono_vehicle import ChronoVehicle
 from control_utilities.chrono_terrain import ChronoTerrain
 from control_utilities.chrono_utilities import calcPose, createChronoSystem, setDataDirectory
 from control_utilities.track import RandomTrack
-from control_utilities.matplotlib import MatSim
+from control_utilities.matplotlib_wrapper import MatplotlibWrapper
 
 from pid_controller import PIDController, PIDLateralController, PIDLongitudinalController
 
 import random
 import sys
+import time
+from multiprocessing import Process
 
 def main():
     if len(sys.argv) == 2:
@@ -17,7 +19,7 @@ def main():
         seed = random.randint(0,100)
 
     # Render preferences
-    matplotlib = 0
+    matplotlib = 1
     irrlicht = 1
 
     # Chrono simulation step size
@@ -29,7 +31,7 @@ def main():
     # Create track
     # ------------
     reversed = random.randint(0,1)
-    track = RandomTrack()
+    track = RandomTrack(x_max=50, y_max=50)
     track.generateTrack(seed=seed, reversed=reversed)
     print('Using seed :: {}'.format(seed))
 
@@ -70,9 +72,12 @@ def main():
     # Create chrono wrapper
     chrono_wrapper = ChronoWrapper(ch_step_size, system, track, vehicle, terrain, irrlicht=irrlicht, draw_barriers=True)
 
-    # mat = MatSim(mat_step_size)
+    if matplotlib:
+        matplotlib_wrapper = MatplotlibWrapper(mat_step_size, vehicle, render_step_size=1.0/20)
+        matplotlib_wrapper.plotTrack(track)
 
     ch_time = mat_time = 0
+    updates = total_time = 0.0
     while True:
         if chrono_wrapper.Advance(ch_step_size) == -1:
             chrono_wrapper.Close()
@@ -82,9 +87,9 @@ def main():
         controller.Advance(ch_step_size, vehicle)
 
         if matplotlib and ch_time >= mat_time:
-            if mat.plot(track, chrono) == -1:
+            if not matplotlib_wrapper.Advance(mat_step_size):
                 print("Quit message received.")
-                mat.close()
+                matplotlib_wrapper.close()
                 break
             mat_time += mat_step_size
 
@@ -92,6 +97,8 @@ def main():
 
         if ch_time > 50:
             break
+        updates += 1.0
+    # print('Update Summary:\n\tChrono Time :: {0:0.2f}\n\tTime per Update :: {1:0.5f}'.format(ch_time, total_time / updates))
     print("Exited")
     pass
 

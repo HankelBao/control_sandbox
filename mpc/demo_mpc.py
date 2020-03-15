@@ -1,7 +1,7 @@
 from control_utilities.chrono import ChronoSim
 from control_utilities.chrono_utilities import calcPose
 from control_utilities.track import RandomTrack
-from control_utilities.matplotlib import MatSim
+from control_utilities.matplotlib_wrapper import MatplotlibWrapper
 
 from mpc_controller import MPCController
 
