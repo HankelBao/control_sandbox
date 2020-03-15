@@ -2,8 +2,20 @@ import pychrono as chrono
 import numpy as np
 import math
 
+class PIDController:
+    def __init__(self, lat_controller, long_controller):
+        self.lat_controller = lat_controller
+        self.long_controller = long_controller
 
-class OpponentPIDSteeringController:
+    def GetTargetAndSentinel(self):
+        return self.lat_controller.target, self.lat_controller.sentinel
+
+    def Advance(self, step, vehicle):
+        self.steering = self.lat_controller.Advance(step, vehicle)
+        self.throttle, self.braking = self.long_controller.Advance(step, vehicle)
+        return self.steering, self.throttle, self.braking
+
+class PIDLateralController:
     def __init__(self, path):
         self.Kp = 0
         self.Ki = 0
@@ -11,6 +23,7 @@ class OpponentPIDSteeringController:
 
         self.dist = 0
         self.target = chrono.ChVectorD(0, 0, 0)
+        self.sentinel = chrono.ChVectorD(0, 0, 0)
 
         self.steering = 0
 
@@ -19,7 +32,6 @@ class OpponentPIDSteeringController:
         self.erri = 0
 
         self.path = path
-        # self.tracker = path.tracker
 
     def SetGains(self, Kp, Ki, Kd):
         self.Kp = Kp
@@ -30,13 +42,10 @@ class OpponentPIDSteeringController:
         self.dist = dist
 
     def Advance(self, step, vehicle):
-        x = vehicle.GetVehiclePos().x
-        y = vehicle.GetVehiclePos().y
-        yaw = vehicle.GetVehicleRot().Q_to_Euler123().z
-
+        state = vehicle.GetState()
         self.sentinel = chrono.ChVectorD(
-            self.dist * math.cos(yaw) + x,
-            self.dist * math.sin(yaw) + y,
+            self.dist * math.cos(state.yaw) + state.x,
+            self.dist * math.sin(state.yaw) + state.y,
             0,
         )
 
@@ -49,7 +58,7 @@ class OpponentPIDSteeringController:
 
         # Calculate the sign of the angle between the projections of the sentinel
         # vector and the target vector (with origin at vehicle location).
-        sign = self.calcSign(vehicle)
+        sign = self.calcSign(state)
 
         # Calculate current error (magnitude)
         err = sign * err_vec.Length()
@@ -68,19 +77,19 @@ class OpponentPIDSteeringController:
             self.Kp * self.err + self.Ki * self.erri + self.Kd * self.errd, -1.0, 1.0
         )
 
+        vehicle.driver.SetTargetSteering(self.steering)
+
         return self.steering
 
-    def calcSign(self, vehicle):
+    def calcSign(self, state):
         """
         Calculate the sign of the angle between the projections of the sentinel vector
         and the target vector (with origin at vehicle location).
         """
 
-        pos = vehicle.GetVehiclePos()
-        pos = chrono.ChVectorD(pos.x, pos.y, 0)
-        sentinel_vec = self.sentinel - pos
+        sentinel_vec = self.sentinel - state.pos
         sentinel_vec.z = 0
-        target_vec = self.target - pos
+        target_vec = self.target - state.pos
         target_vec.z = 0
 
         temp = (sentinel_vec % target_vec) ^ chrono.ChVectorD(0, 0, 1)
@@ -88,8 +97,8 @@ class OpponentPIDSteeringController:
         return (temp > 0) - (temp < 0)
 
 
-class OpponentPIDThrottleController:
-    def __init__(self):
+class PIDLongitudinalController:
+    def __init__(self, path):
         self.Kp = 0
         self.Ki = 0
         self.Kd = 0
@@ -103,16 +112,33 @@ class OpponentPIDThrottleController:
 
         self.throttle_threshold = 0.2
 
+        self.path = path
+        self.dist = 0
+
     def SetGains(self, Kp, Ki, Kd):
         self.Kp = Kp
         self.Ki = Ki
         self.Kd = Kd
 
+    def SetLookAheadDistance(self, dist):
+        self.dist = dist
+
     def SetTargetSpeed(self, speed):
         self.target_speed = speed
 
-    def Advance(self, step, vehicle, driver):
-        self.speed = vehicle.GetVehicleSpeed()
+    def Advance(self, step, vehicle):
+        state = vehicle.GetState()
+        self.sentinel = chrono.ChVectorD(
+            self.dist * math.cos(state.yaw) + state.x,
+            self.dist * math.sin(state.yaw) + state.y,
+            0,
+        )
+
+        self.target = self.path.calcClosestPoint(self.sentinel)
+
+        self.target_speed = self.path.calcSpeed(self.target)
+
+        self.speed = state.v
 
         # Calculate current error
         err = self.target_speed - self.speed
@@ -135,12 +161,16 @@ class OpponentPIDThrottleController:
             # Vehicle moving too slow
             self.braking = 0
             self.throttle = throttle
-        elif driver.GetTargetThrottle() > self.throttle_threshold:
+        elif vehicle.driver.GetTargetThrottle() > self.throttle_threshold:
             # Vehicle moving too fast: reduce throttle
             self.braking = 0
-            self.throttle = driver.GetTargetThrottle() + throttle
+            self.throttle = vehicle.driver.GetTargetThrottle() + throttle
         else:
             # Vehicle moving too fast: apply brakes
             self.braking = -throttle
             self.throttle = 0
+
+        vehicle.driver.SetTargetThrottle(self.throttle)
+        vehicle.driver.SetTargetBraking(self.braking)
+
         return self.throttle, self.braking

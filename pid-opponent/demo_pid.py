@@ -1,11 +1,12 @@
-from control_utilities.chrono import ChronoSim
-from control_utilities.chrono_utilities import calcPose
+from control_utilities.chrono_wrapper import ChronoWrapper
+from control_utilities.chrono_vehicle import ChronoVehicle
+from control_utilities.chrono_terrain import ChronoTerrain
+from control_utilities.chrono_utilities import calcPose, createChronoSystem, setDataDirectory, calcRandomPose
 from control_utilities.track import RandomTrack, Track
 from control_utilities.matplotlib import MatSim
-from control_utilities.opponent import generateRandomOpponent
+from control_utilities.opponent import Opponent
 
-from pid_controller import PIDSteeringController, PIDThrottleController
-from opponent_pid_controller import OpponentPIDSteeringController, OpponentPIDThrottleController
+from pid_controller import PIDController, PIDLateralController, PIDLongitudinalController
 
 import random
 import sys
@@ -29,16 +30,47 @@ def main():
     # ------------
     # Create track
     # ------------
-    reversed = random.randint(0,1)
+    reversed = 1 # random.randint(0,1)
     track = RandomTrack(width=20)
     track.generateTrack(seed=seed, reversed=reversed)
     print('Using seed :: {}'.format(seed))
 
-    # ----------------
-    # Create opponent
-    # ----------------
+    # --------------------
+    # Create controller(s)
+    # --------------------
+    lat_controller = PIDLateralController(track.center)
+    lat_controller.SetGains(Kp=0.4, Ki=0, Kd=0.25)
+    lat_controller.SetLookAheadDistance(dist=5)
+
+    long_controller = PIDLongitudinalController()
+    long_controller.SetGains(Kp=0.4, Ki=0, Kd=0)
+    long_controller.SetTargetSpeed(speed=10.0)
+
+    # PID controller (wraps both lateral and longitudinal controllers)
+    controller = PIDController(lat_controller, long_controller)
+
+    # ------------------------
+    # Create chrono components
+    # ------------------------
+    setDataDirectory()
+
+    # Create chrono system
+    system = createChronoSystem()
+
+    # Calculate initial position and initial rotation of vehicle
+    initLoc, initRot = calcPose(track.center.points[0], track.center.points[1])
+    # Create chrono vehicle
+    vehicle = ChronoVehicle(ch_step_size, system, controller, irrlicht=irrlicht, vehicle_type='json', initLoc=initLoc, initRot=initRot, vis_balls=True)
+
+    # Create chrono terrain
+    terrain = ChronoTerrain(ch_step_size, system, irrlicht=irrlicht, terrain_type='concrete')
+    vehicle.SetTerrain(terrain)
+
+    # ------------------
+    # Create opponent(s)
+    # ------------------
     opponents = []
-    n = 2
+    n = 1
     for i in range(n):
         opponent_track = Track(track.center.waypoints, width=track.width/2)
         opponent_track.generateTrack()
@@ -49,56 +81,39 @@ def main():
         else:
             opponent_path = opponent_track.center
 
-        opponent_lat_controller = OpponentPIDSteeringController(opponent_path)
+        opponent_lat_controller = PIDLateralController(opponent_path)
         opponent_lat_controller.SetGains(Kp=0.4, Ki=0, Kd=0.25)
         opponent_lat_controller.SetLookAheadDistance(dist=5)
 
-        opponent_long_controller = OpponentPIDThrottleController()
+        opponent_long_controller = PIDLongitudinalController()
         opponent_long_controller.SetGains(Kp=0.4, Ki=0, Kd=0)
         opponent_long_controller.SetTargetSpeed(speed=5.0)
-        opponent = generateRandomOpponent(opponent_path, s_min=opponent_path.s[100 + i * 100], s_max=opponent_path.s[100 + i * 100], lat_controller=opponent_lat_controller, long_controller=opponent_long_controller)
+
+        opponent_controller = PIDController(opponent_lat_controller, opponent_long_controller)
+
+        opponent_initLoc, opponent_initRot = calcRandomPose(opponent_path, s_min=opponent_path.s[100 + i * 100], s_max=opponent_path.s[100 + i * 100])
+        opponent_vehicle = ChronoVehicle(ch_step_size, system, opponent_controller, irrlicht=irrlicht, vehicle_type='json', initLoc=opponent_initLoc, initRot=opponent_initRot)
+        opponent_vehicle.SetTerrain(terrain)
+        opponent = Opponent(opponent_vehicle, opponent_controller)
+
         opponents.append(opponent)
 
-    # --------------------
-    # Create controller(s)
-    # --------------------
-    lat_controller = PIDSteeringController(track.center)
-    lat_controller.SetGains(Kp=0.4, Ki=0, Kd=0.25)
-    lat_controller.SetLookAheadDistance(dist=5)
-    # lat_controller.initTracker(track.center)
+    controller.SetOpponents(opponents)
 
-    long_controller = PIDThrottleController()
-    long_controller.SetGains(Kp=0.4, Ki=0, Kd=0)
-    long_controller.SetTargetSpeed(speed=10.0)
-
-    initLoc, initRot = calcPose([track.center.x[0],track.center.y[0]], [track.center.x[1],track.center.y[1]])
-
-    chrono = ChronoSim(
-        step_size=ch_step_size,
-        track=track,
-        initLoc=initLoc,
-        initRot=initRot,
-        irrlicht=irrlicht,
-        opponents=opponents,
-        draw_barriers=True,
-        vis_balls=True
-    )
+    # Create chrono wrapper
+    chrono_wrapper = ChronoWrapper(ch_step_size, system, track, vehicle, terrain, irrlicht=irrlicht, opponents=opponents, draw_barriers=True)
 
     mat = MatSim(mat_step_size)
 
     ch_time = mat_time = 0
     while True:
-        # Update controllers
-        steering = lat_controller.Advance(ch_step_size, chrono)
-        throttle, braking = long_controller.Advance(ch_step_size, chrono)
-
-        chrono.driver.SetTargetSteering(steering)
-        chrono.driver.SetTargetThrottle(throttle)
-        chrono.driver.SetTargetBraking(braking)
-
-        if chrono.Advance(ch_step_size) == -1:
-            chrono.Close()
+        if chrono_wrapper.Advance(ch_step_size) == -1:
+            chrono_wrapper.Close()
             break
+
+        controller.Advance(ch_step_size, vehicle, perception_distance=30)
+        for opponent in opponents:
+            opponent.Update(ch_time, ch_step_size)
 
         if matplotlib and ch_time >= mat_time:
             if mat.plot(track, chrono) == -1:

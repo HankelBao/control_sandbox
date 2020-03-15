@@ -1,15 +1,16 @@
-from control_utilities.chrono import ChronoSim
-from control_utilities.chrono_utilities import calcPose
+from control_utilities.chrono_wrapper import ChronoWrapper
+from control_utilities.chrono_vehicle import ChronoVehicle
+from control_utilities.chrono_terrain import ChronoTerrain
+from control_utilities.chrono_utilities import calcPose, createChronoSystem, setDataDirectory
 from control_utilities.track import RandomTrack
 from control_utilities.matplotlib import MatSim
 
-from pid_controller import PIDSteeringController, PIDThrottleController
+from pid_controller import PIDController, PIDLateralController, PIDLongitudinalController
 
 import random
 import sys
 
 def main():
-    global first, time
     if len(sys.argv) == 2:
         seed = int(sys.argv[1])
     else:
@@ -35,48 +36,58 @@ def main():
     # --------------------
     # Create controller(s)
     # --------------------
-    steering_controller = PIDSteeringController(track.center)
-    steering_controller.SetGains(Kp=0.4, Ki=0, Kd=0.3)
-    steering_controller.SetLookAheadDistance(dist=5)
-    # steering_controller.initTracker(track.center)
 
-    throttle_controller = PIDThrottleController(track.center)
-    throttle_controller.SetGains(Kp=0.4, Ki=0, Kd=0.45)
-    throttle_controller.SetLookAheadDistance(dist=5)
-    throttle_controller.SetTargetSpeed(speed=10.0)
+    # Lateral controller (steering)
+    lat_controller = PIDLateralController(track.center)
+    lat_controller.SetGains(Kp=0.4, Ki=0, Kd=0.3)
+    lat_controller.SetLookAheadDistance(dist=5)
 
-    initLoc, initRot = calcPose([track.center.x[0],track.center.y[0]], [track.center.x[1],track.center.y[1]])
+    # Longitudinal controller (throttle and braking)
+    long_controller = PIDLongitudinalController(track.center)
+    long_controller.SetGains(Kp=0.4, Ki=0, Kd=0.45)
+    long_controller.SetLookAheadDistance(dist=5)
+    long_controller.SetTargetSpeed(speed=10.0)
 
-    chrono = ChronoSim(
-        step_size=ch_step_size,
-        track=track,
-        initLoc=initLoc,
-        initRot=initRot,
-        irrlicht=irrlicht,
-    )
+    # PID controller (wraps both lateral and longitudinal controllers)
+    controller = PIDController(lat_controller, long_controller)
 
-    mat = MatSim(mat_step_size)
+    # ------------------------
+    # Create chrono components
+    # ------------------------
+    setDataDirectory()
+
+    # Create chrono system
+    system = createChronoSystem()
+
+    # Calculate initial position and initial rotation of vehicle
+    initLoc, initRot = calcPose(track.center.points[0], track.center.points[1])
+    # Create chrono vehicle
+    vehicle = ChronoVehicle(ch_step_size, system, controller, irrlicht=irrlicht, vehicle_type='json', initLoc=initLoc, initRot=initRot, vis_balls=True)
+
+    # Create chrono terrain
+    terrain = ChronoTerrain(ch_step_size, system, irrlicht=irrlicht, terrain_type='concrete')
+    vehicle.SetTerrain(terrain)
+
+    # Create chrono wrapper
+    chrono_wrapper = ChronoWrapper(ch_step_size, system, track, vehicle, terrain, irrlicht=irrlicht, draw_barriers=True)
+
+    # mat = MatSim(mat_step_size)
 
     ch_time = mat_time = 0
     while True:
         # Update controllers
-        steering = steering_controller.Advance(ch_step_size, chrono)
-        throttle, braking = throttle_controller.Advance(ch_step_size, chrono)
-
-        if chrono.vehicle.GetVehicleSpeed() < 7:
-            steering_controller.SetGains(Kp=0.2, Ki=0, Kd=0.6)
-        elif chrono.vehicle.GetVehicleSpeed() < 8:
-            steering_controller.SetGains(Kp=0.3, Ki=0, Kd=0.45)
+        if vehicle.vehicle.GetVehicleSpeed() < 7:
+            lat_controller.SetGains(Kp=0.2, Ki=0, Kd=0.6)
+        elif vehicle.vehicle.GetVehicleSpeed() < 8:
+            lat_controller.SetGains(Kp=0.3, Ki=0, Kd=0.45)
         else:
-            steering_controller.SetGains(Kp=0.4, Ki=0, Kd=0.3)
+            lat_controller.SetGains(Kp=0.4, Ki=0, Kd=0.3)
 
+        # Update controller
+        controller.Advance(ch_step_size, vehicle)
 
-        chrono.driver.SetTargetSteering(steering)
-        chrono.driver.SetTargetThrottle(throttle)
-        chrono.driver.SetTargetBraking(braking)
-
-        if chrono.Advance(ch_step_size) == -1:
-            chrono.Close()
+        if chrono_wrapper.Advance(ch_step_size) == -1:
+            chrono_wrapper.Close()
             break
 
         if matplotlib and ch_time >= mat_time:

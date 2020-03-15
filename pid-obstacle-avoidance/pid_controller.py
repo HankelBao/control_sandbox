@@ -8,8 +8,22 @@ from math import pi
 from control_utilities.path import Path
 from matplotlib import pyplot as plt
 
+class PIDController:
+    def __init__(self, lat_controller, long_controller):
+        self.lat_controller = lat_controller
+        self.long_controller = long_controller
 
-class PIDSteeringController:
+    def GetTargetAndSentinel(self):
+        return self.lat_controller.target, self.lat_controller.sentinel
+
+    def Advance(self, step, vehicle):
+        # Update controllers
+        self.steering, self.obstacleInRange, self.tempObstacleAvoidancePath = self.lat_controller.Advance(step, vehicle)
+        self.throttle, self.braking = self.long_controller.Advance(step, vehicle, self.obstacleInRange, self.tempObstacleAvoidancePath)
+
+        return self.steering, self.throttle, self.braking
+
+class PIDLateralController:
     def __init__(self, track, obstacles):
         self.Kp = 0
         self.Ki = 0
@@ -139,8 +153,8 @@ class PIDSteeringController:
 
 
 
-    def Advance(self, step, veh_model):
-        state = veh_model.GetState()
+    def Advance(self, step, vehicle):
+        state = vehicle.GetState()
         self.sentinel = chrono.ChVectorD(
             self.lookDist * math.cos(state.yaw) + state.x,
             self.lookDist * math.sin(state.yaw) + state.y,
@@ -200,10 +214,6 @@ class PIDSteeringController:
                 #print("NEW Target X: " + str(targ.x))
                 #print("NEW Target Y: " + str(targ.y))
 
-
-        veh_model.ballS.SetPos(self.sentinel)
-        veh_model.ballT.SetPos(targ)
-
         # The "error" vector is the projection onto the horizontal plane (z=0) of
         # vector between sentinel and target
         err_vec = targ - self.sentinel
@@ -211,7 +221,7 @@ class PIDSteeringController:
 
         # Calculate the sign of the angle between the projections of the sentinel
         # vector and the target vector (with origin at vehicle location).
-        sign = self.calcSign(veh_model, targ)
+        sign = self.calcSign(state, targ)
 
         # Calculate current error (magnitude)
         err = sign * err_vec.Length()
@@ -230,19 +240,19 @@ class PIDSteeringController:
             self.Kp * self.err + self.Ki * self.erri + self.Kd * self.errd, -1.0, 1.0
         )
 
+        vehicle.driver.SetTargetSteering(self.steering)
+
         return self.steering, self.obstacleInRange, self.tempObstacleAvoidancePath
 
-    def calcSign(self, veh_model, targ):
+    def calcSign(self, state, targ):
         """
         Calculate the sign of the angle between the projections of the sentinel vector
         and the target vector (with origin at vehicle location).
         """
 
-        pos = veh_model.GetState()
-        pos = chrono.ChVectorD(pos.x, pos.y, 0)
-        sentinel_vec = self.sentinel - pos
+        sentinel_vec = self.sentinel - state.pos
         sentinel_vec.z = 0
-        target_vec = targ - pos
+        target_vec = targ - state.pos
         target_vec.z = 0
 
         temp = (sentinel_vec % target_vec) ^ chrono.ChVectorD(0, 0, 1)
@@ -250,7 +260,7 @@ class PIDSteeringController:
         return (temp > 0) - (temp < 0)
 
 
-class PIDThrottleController:
+class PIDLongitudinalController:
     def __init__(self, path):
         self.Kp = 0
         self.Ki = 0
@@ -279,8 +289,8 @@ class PIDThrottleController:
     def SetTargetSpeed(self, speed):
         self.target_speed = speed
 
-    def Advance(self, step, veh_model, obstacleInRange, tempObstacleAvoidancePath):
-        state = veh_model.GetState()
+    def Advance(self, step, vehicle, obstacleInRange, tempObstacleAvoidancePath):
+        state = vehicle.GetState()
         self.sentinel = chrono.ChVectorD(
             self.dist * math.cos(state.yaw) + state.x,
             self.dist * math.sin(state.yaw) + state.y,
@@ -296,7 +306,7 @@ class PIDThrottleController:
 
         #print(self.target_speed)
 
-        self.speed = veh_model.GetState().v
+        self.speed = state.v
 
         #print(self.speed)
 
@@ -321,12 +331,16 @@ class PIDThrottleController:
             # Vehicle moving too slow
             self.braking = 0
             self.throttle = throttle
-        elif veh_model.driver.GetTargetThrottle() > self.throttle_threshold:
+        elif vehicle.driver.GetTargetThrottle() > self.throttle_threshold:
             # Vehicle moving too fast: reduce throttle
             self.braking = 0
-            self.throttle = veh_model.driver.GetTargetThrottle() + throttle
+            self.throttle = vehicle.driver.GetTargetThrottle() + throttle
         else:
             # Vehicle moving too fast: apply brakes
             self.braking = -throttle
             self.throttle = 0
+
+        vehicle.driver.SetTargetThrottle(self.throttle)
+        vehicle.driver.SetTargetBraking(self.braking)
+        
         return self.throttle, self.braking

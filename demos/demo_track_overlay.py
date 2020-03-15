@@ -10,6 +10,5 @@ if __name__ == "__main__":
         seed = 1.0
 
     rand_track = RandomTrack()
-     q
     rand_track.plot(seed)
 
