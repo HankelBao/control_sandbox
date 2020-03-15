@@ -59,11 +59,11 @@ def main():
 
     segmentation = Segmentations(track, k_precision=0.8)
     segmentation.create_segmentations()
-    segmentation.plot()
 
     # rastar = RAStar(segmentation, neightbors_ratio=0.2, divisions=10)
     # a = rastar.find_a(0.5)
 
+    # a = 0.0 * segmentation.width
     # path = TrackPath(segmentation, a)
     # path.plot_path()
 
@@ -96,7 +96,7 @@ def main():
             generator.plot_best_path()
             compare_track.plot(centerline=False, show=False)
 
-            print(1/np.average(generator.best_path.c))
+            print(1/np.average(generator.best_path.k))
 
             if stable_path:
                 stable_path.plot_path("g-")
