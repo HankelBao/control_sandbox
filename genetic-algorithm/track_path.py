@@ -140,7 +140,7 @@ class TrackPath(Path):
         self.update_profile()
 
         self.adaptability = -np.sum(self.t)
-        self.point_adapt = 0-np.append(np.array([0]), self.t)
+        self.point_adapt = self.v_max
 
     def update_vmax(self):
         for i in range(self.size):
@@ -242,44 +242,14 @@ class GAConfig():
         self.state = SEARCH
         self.population_ratio = 1
         self.cross_ratio = 0.4
-        self.smutation_ratio = 0.4
-        self.gmutation_ratio = 0.4
-        self.copy_ratio = 0
+        self.mutation_ratio = 0.4
         self.mutation_range = np.full(self.segmentation_size, 0.5)
         self.safe_boundary = 0.3
-        self.stablized_generation = 10
-
-    def optimize_config(self):
-        self.state = OPTIMIZE
-        self.population_ratio = 1
-        self.cross_ratio = 0.4
-        self.smutation_ratio = 0.4
-        self.gmutation_ratio = 0.4
-        self.copy_ratio = 0
-        self.mutation_range = np.full(self.segmentation_size, 0.5)
-        self.safe_boundary = 0.1
-        self.stablized_generation = 40
-
-    def extreme_config(self):
-        self.state = EXTREME
-        self.population_ratio = 30
-        self.cross_ratio = 0.4
-        self.smutation_ratio = 0.4
-        self.gmutation_ratio = 0.4
-        self.copy_ratio = 0.0
-        self.mutation_range = np.full(self.segmentation_size, 0.3)
-        self.safe_boundary = 0.1
         self.stablized_generation = 10
 
     def upgrade(self):
         if self.state == INIT:
             self.search_config()
-            return
-        if self.state == SEARCH:
-            self.optimize_config()
-            return
-        if self.state == OPTIMIZE:
-            self.extreme_config()
             return
 
     def upgradable(self):
@@ -298,13 +268,9 @@ class GAPathGenerator:
         s_size = segmentation.size
         self.population_size = int(s_size*config.population_ratio)
         self.cross_size = int(s_size*config.cross_ratio)
-        self.smutation_size = int(s_size*config.smutation_ratio)
-        self.gmutation_size = int(s_size*config.gmutation_ratio)
-        self.copy_size = int(s_size*config.copy_ratio)
+        self.mutation_size = int(s_size*config.mutation_ratio)
 
         self.config = config
-        # self.a_min = np.maximum(config.initial_a-config.mutation_range, np.full(s_size, config.safe_boundary))
-        # self.a_max = np.minimum(config.initial_a+config.mutation_range, np.full(s_size, 1-config.safe_boundary))
         self.a_min = config.a_min
         self.a_max = config.a_max
 
@@ -324,25 +290,24 @@ class GAPathGenerator:
             self.selection_p.append(self.path[i].adaptability/adaptability_sum)
 
     def init_generation(self):
-        # self.path.append(TrackPath(self.segmentation, self.config.initial_a))
         for _ in range(self.population_size-1):
             a = np.random.uniform(self.a_min, self.a_max)
             self.path.append(TrackPath(self.segmentation, a))
 
     def next_generation(self):
-        for _ in range(self.cross_size):
+        for _ in range(int(self.cross_size)):
             self.cross()
 
         for _ in range(int(self.cross_size*0.1)):
             self.gcross()
 
-        for _ in range(int(self.smutation_size*1)):
+        for _ in range(int(self.mutation_size*0.2)):
             self.selected_mutation()
 
-        for _ in range(int(self.smutation_size)):
+        for _ in range(int(self.mutation_size*0.7)):
             self.peek_mutation()
 
-        for _ in range(self.gmutation_size):
+        for _ in range(int(self.mutation_size*0.1)):
             self.general_mutation()
 
     def rws(self):
@@ -355,6 +320,16 @@ class GAPathGenerator:
             if sum >= rand:
                 return i
         return len(self.selection_p)-1
+
+    def local_rws(self, path):
+        rand = random.uniform(0, 1)
+        adapt_sum = np.sum(path.point_adapt)
+        sum = 0.0
+        for i in range(len(path.point_adapt)):
+            sum += path.point_adapt[i]/adapt_sum
+            if sum >= rand:
+                return i
+        return len(path.point_adapt)-1
 
     def cross(self):
         path1 = self.path[self.rws()]
@@ -379,22 +354,16 @@ class GAPathGenerator:
         self.path.append(TrackPath(self.segmentation, a))
 
     def selected_mutation(self):
-        def local_rws(path):
-            rand = random.uniform(0, 1)
-            adapt_sum = np.sum(path.point_adapt)
-            sum = 0.0
-            for i in range(len(path.point_adapt)):
-                sum += path.point_adapt[i]/adapt_sum
-                if sum >= rand:
-                    return i
-            return len(path.point_adapt)-1
-
+        """
+        Make small tweaks to bad points
+        Should be used in final stages
+        """
         path = self.path[self.rws()]
         a = deepcopy(path.a)
 
-        index = local_rws(path)
-        a[index] = np.clip(np.random.normal(a[index], 0.3), self.a_min[index], self.a_max[index])#np.random.uniform(0, 1)
-        influence_range = 0 #random.randint(0, 1)
+        index = self.local_rws(path)
+        a[index] = np.clip(np.random.normal(a[index], (self.a_max[index]-self.a_min[index])/4), self.a_min[index], self.a_max[index])#np.random.uniform(0, 1)
+        influence_range = 0
         for i in range(influence_range):
             try:
                 a[index-i] = np.random.uniform(self.a_min[index-i], self.a_max[index-i])
@@ -405,14 +374,18 @@ class GAPathGenerator:
         self.path.append(TrackPath(self.segmentation, a))
 
     def peek_mutation(self):
+        """
+        Optimize the worst point
+        Accelerate the finding process
+        """
         path = self.path[self.rws()]
         a = deepcopy(path.a)
         worst_a = np.min(path.point_adapt)
 
         places = np.where(path.point_adapt == worst_a)
         for index in places:
-            a[index] = np.random.uniform(0, 1)
-            influence_range = 0 #random.randint(0, 3)
+            a[index] = np.random.uniform(self.a_min[index], self.a_max[index])
+            influence_range = 0
             for i in range(influence_range):
                 try:
                     a[index-i] = np.random.uniform(self.a_min[index-i], self.a_max[index-i])
@@ -423,9 +396,12 @@ class GAPathGenerator:
         self.path.append(TrackPath(self.segmentation, a))
 
     def general_mutation(self):
+        """
+        Randomly modify bad points
+        """
         path = self.path[self.rws()]
         a = deepcopy(path.a)
-        index = random.randint(0, self.s_size-1)
+        index = self.local_rws(path)
         a[index] = np.random.uniform(self.a_min[index], self.a_max[index])
         self.path.append(TrackPath(self.segmentation, a))
 
@@ -458,12 +434,3 @@ class GAPathGenerator:
 
     def plot_best_path(self):
         self.best_path.plot_path()
-
-        # plt.savefig("fig"+str(generation)+".png")
-        # save_unit = 10
-        # if generation % save_unit == 0:
-        #     plt.savefig("fig"+str(generation)+".png")
-        #     if generation != 100 or generation != 1000 or generation != 10000 or generation != 100000:
-        #         if generation % 1000 != 0:
-        #             if int(generation/save_unit) != 1:
-        #                 os.remove("fig"+str(generation-save_unit)+".png")

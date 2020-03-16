@@ -60,25 +60,15 @@ def main():
     segmentation = Segmentations(track, k_precision=0.8)
     segmentation.create_segmentations()
 
-    # a = 0.5 * segmentation.width
-    # path = TrackPath(segmentation, a)
-    # path.plot_speed_profile()
-    # path.generate_final_path()
-    # path.plot_final_path()
-
     compare_track = Track(points)
     compare_track.generateTrack()
-
-    # plt.show()
-
-    # plt.show()
 
     plt.ion()
 
     config = GAConfig(segmentation)
     config.initial_a = 0.5 * segmentation.width
-    config.a_min = np.full(segmentation.size, 0.1)
-    config.a_max = segmentation.width-0.1
+    config.a_min = np.full(segmentation.size, 2)
+    config.a_max = segmentation.width-2
     generation = 0
     stable_path = None
     save = False
@@ -122,7 +112,6 @@ def main():
     stable_path.plot_final_path()
     plt.show()
     plt.pause(100)
-
 
 if __name__ == "__main__":
     main()
