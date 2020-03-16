@@ -124,8 +124,8 @@ class RAStar:
         # return np.abs(self.width-x) + np.abs(self.start_y-y)
         return self.g_score[x][y]/x*(self.width-x)
 
-BRK = 0.5
-ACC = 0.1
+BRK = 10
+ACC = 5
 class TrackPath(Path):
     def __init__(self, segmentation: Segmentations, a):
         self.size = segmentation.size
@@ -139,65 +139,61 @@ class TrackPath(Path):
         self.update_vmax()
         self.update_profile()
 
-        self.point_adapt = np.abs(1/self.k)
-        self.adaptability = 1/np.average(np.power(self.k, 2))+np.average(np.power(self.yaw*2, 2))+np.min(self.yaw)*2-np.average(self.s)
+        self.adaptability = -np.sum(self.t)
+        self.point_adapt = 0-np.append(np.array([0]), self.t)
 
     def update_vmax(self):
         for i in range(self.size):
             v_max = self.v_max[i]
+
             s = 0
-            for j in range(self.size):
+            for j in range(1, i+1):
+                # Check v_max of all points before it
                 index = i-j
-                s += self.pd[index]
-                local_v_max = 2*BRK*s + np.square(v_max)
+                s += self.ps[index]
+                local_v_max = np.sqrt(2*BRK*s + np.square(v_max))
                 if local_v_max < self.v_max[index]:
                     self.v_max[index] = local_v_max
 
     def update_profile(self):
-        self.adjust_d = []
-        self.adjust_a = []
-        self.v = []
-        self.t = []
+        brk_s = []
+        acc_s = []
+        v = []
+        t = []
 
         current_speed = 0
-        for i in range(self.size-1):
-            distance = self.pd[i]
+        for i in range(len(self.ps)):
+            v.append(current_speed)
+
+            ps = self.ps[i]
             v_max = self.v_max[i+1]
-            self.v.append(current_speed)
 
-            at = self.calc_adjust_time(i, current_speed)
-            aa = ACC if current_speed <= v_max else -BRK
-            ad = (2*current_speed+aa*at)*at/2
-            # print(ad, ' ', distance)
-            current_speed = current_speed + aa*at
+            if current_speed <= v_max:
+                top_speed = np.sqrt(2*ACC*ps + current_speed**2)
+                v_end = v_max if top_speed > v_max else top_speed
+                acc_distance = (v_end**2 - current_speed**2) / (2 * ACC)
+                time = (top_speed-current_speed)/ACC + (ps-acc_distance)/v_end
 
-            self.adjust_a.append(aa)
-            self.adjust_d.append(ad)
-            self.t.append(at + (distance-ad)/current_speed)
+                acc_s.append(acc_distance)
+                brk_s.append(0)
+                t.append(time)
 
-        # for i in range(self.size-1):
-        #    print(self.v[i], ' ', self.adjust_d[i], ' ', self.adjust_a[i], ' ', self.k[i]*100)
+                current_speed = v_end
+            else:
+                v_end = v_max
+                brk_distance = (current_speed**2 - v_end**2) / (2 * BRK)
+                time = (ps-brk_distance)/current_speed + (current_speed-v_end)/BRK
 
-        plt.plot(self.s, self.v, "g-")
-        plt.plot(self.s, np.abs(self.k[:-1]*100), "b-")
-        plt.plot(self.s, np.abs(self.v_max[:-1]), "k-")
-        plt.plot(self.s, np.array(self.adjust_a)*10+5, "c-")
-        plt.show()
+                acc_s.append(0)
+                brk_s.append(brk_distance)
+                t.append(time)
 
-    def calc_adjust_time(self, index, current_speed):
-        distance = self.pd[index]
-        v_max = self.v_max[index+1]
+                current_speed = v_end
 
-        top_speed = np.sqrt(2*ACC*distance + current_speed**2)
-
-        if v_max > top_speed:
-            return (top_speed-current_speed)/ACC
-
-        if current_speed <= v_max:
-            return (v_max-current_speed)/ACC
-
-        if current_speed > v_max:
-            return (current_speed-v_max)/BRK
+        self.brk_s = np.array(brk_s)
+        self.acc_s = np.array(acc_s)
+        self.v = np.array(v)
+        self.t = np.array(t)
 
     def plot_path(self, show=False, color="r^-"):
         self.plot(show=show, color=color)
@@ -208,25 +204,23 @@ class TrackPath(Path):
             points.append([self.x[i], self.y[i]])
         self.final_path = Path(points, num_points=500)
 
-    def plot_final_path(self):
-        # print(self.adjust_d)
-        segmentation_counter=2
-        for i in range(1, self.final_path.length):
-            if self.final_path.s[i-1] > self.s[segmentation_counter-1]:
-                # plt.plot(self.final_path.x[i], self.final_path.y[i], "r*")
-                segmentation_counter += 1
-                if segmentation_counter > self.size-2:
-                    return
+    def plot_speed_profile(self):
+        # Speed
+        plt.plot(self.s, self.v, "g-")
 
-            print(self.final_path.s[i-1]-self.s[segmentation_counter-2])
-            if self.final_path.s[i-1]-self.s[segmentation_counter-2] < self.adjust_d[segmentation_counter]:
-                if self.adjust_a[segmentation_counter] < 0:
-                    plt.plot(self.final_path.x[i], self.final_path.y[i], "r*")
-                else:
-                    plt.plot(self.final_path.x[i], self.final_path.y[i], "b*")
-            else:
-                plt.plot(self.final_path.x[i], self.final_path.y[i], "c+")
+        # Time
+        plt.plot(self.s, self.t, "y-")
 
+        # Curvature
+        # plt.plot(np.abs(self.k*100), "b-")
+
+        # Max Speed based on global curvature
+        # plt.plot(np.abs(self.v_max), "k-")
+
+        # Throttle
+        # plt.plot(np.array(self.adjust_a)*10+5, "c+")
+
+        plt.show()
 
 # class TrackPath:
 #     def __init__(self, segmentation, a):
@@ -355,7 +349,7 @@ class GAConfig():
         self.copy_ratio = 0
         self.mutation_range = np.full(self.segmentation_size, 0.5)
         self.safe_boundary = 0.3
-        self.stablized_generation = 5
+        self.stablized_generation = 10
 
     def optimize_config(self):
         self.state = OPTIMIZE

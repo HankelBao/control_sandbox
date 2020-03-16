@@ -59,21 +59,17 @@ def main():
 
     segmentation = Segmentations(track, k_precision=0.8)
     segmentation.create_segmentations()
-    # segmentation.plot()
 
-    # rastar = RAStar(segmentation, neightbors_ratio=0.2, divisions=10)
-    # a = rastar.find_a(0.5)
-
-    a = 0.5 * segmentation.width
-    path = TrackPath(segmentation, a)
-    path.generate_final_path()
-    path.plot_final_path()
+    # a = 0.5 * segmentation.width
+    # path = TrackPath(segmentation, a)
+    # path.plot_speed_profile()
+    # path.generate_final_path()
+    # path.plot_final_path()
 
     compare_track = Track(points)
     compare_track.generateTrack()
-    #compare_track.plot(show=False, centerline=False)
 
-    plt.show()
+    # plt.show()
 
     # plt.show()
 
@@ -86,11 +82,9 @@ def main():
     generation = 0
     stable_path = None
     save = False
-    print('testestsetset')
 
     while (config.upgradable()):
         print("Upgraded")
-        # print(config.state)
         config.upgrade()
         generator = GAPathGenerator(segmentation, config)
 
@@ -99,9 +93,8 @@ def main():
 
             segmentation.plot()
             generator.plot_best_path()
+            print(np.sum(generator.best_path.t))
             compare_track.plot(centerline=False, show=False)
-
-            # print(1/np.average(generator.best_path.k))
 
             if stable_path:
                 stable_path.plot_path("g-")
@@ -117,7 +110,6 @@ def main():
 
         stable_path = generator.best_path
         config.initial_a = stable_path.a
-        # config.
 
         stable_path.plot_path("g-")
         compare_track.plot(centerline=False, show=False)
@@ -130,17 +122,6 @@ def main():
     stable_path.plot_final_path()
     plt.show()
     plt.pause(100)
-
-
-    # center = []
-    # for i in range(len(stable_path.x)):
-    #     center.append([stable_path.x[i], stable_path.y[i]])
-
-    # optimized_path = Path(center)
-    # plt.clf()
-    # compare_track.plot(centerline=False, show=False)
-    # optimized_path.plot(color="g-")
-    # plt.pause(10000)
 
 
 if __name__ == "__main__":
