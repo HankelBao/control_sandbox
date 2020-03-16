@@ -124,8 +124,6 @@ class RAStar:
         # return np.abs(self.width-x) + np.abs(self.start_y-y)
         return self.g_score[x][y]/x*(self.width-x)
 
-BRK = 10
-ACC = 5
 class TrackPath(Path):
     def __init__(self, segmentation: Segmentations, a):
         self.size = segmentation.size
@@ -136,64 +134,8 @@ class TrackPath(Path):
             points.append(segmentation.get_point(i, a[i]))
         super().__init__(points, closed=True, raw_mode=True)
 
-        self.update_vmax()
-        self.update_profile()
-
         self.adaptability = -np.sum(self.t)
         self.point_adapt = self.v_max
-
-    def update_vmax(self):
-        for i in range(self.size):
-            v_max = self.v_max[i]
-
-            s = 0
-            for j in range(1, i+1):
-                # Check v_max of all points before it
-                index = i-j
-                s += self.ps[index]
-                local_v_max = np.sqrt(2*BRK*s + np.square(v_max))
-                if local_v_max < self.v_max[index]:
-                    self.v_max[index] = local_v_max
-
-    def update_profile(self):
-        brk_s = []
-        acc_s = []
-        v = []
-        t = []
-
-        current_speed = 0
-        for i in range(len(self.ps)):
-            v.append(current_speed)
-
-            ps = self.ps[i]
-            v_max = self.v_max[i+1]
-
-            if current_speed <= v_max:
-                top_speed = np.sqrt(2*ACC*ps + current_speed**2)
-                v_end = v_max if top_speed > v_max else top_speed
-                acc_distance = (v_end**2 - current_speed**2) / (2 * ACC)
-                time = (top_speed-current_speed)/ACC + (ps-acc_distance)/v_end
-
-                acc_s.append(acc_distance)
-                brk_s.append(0)
-                t.append(time)
-
-                current_speed = v_end
-            else:
-                v_end = v_max
-                brk_distance = (current_speed**2 - v_end**2) / (2 * BRK)
-                time = (ps-brk_distance)/current_speed + (current_speed-v_end)/BRK
-
-                acc_s.append(0)
-                brk_s.append(brk_distance)
-                t.append(time)
-
-                current_speed = v_end
-
-        self.brk_s = np.array(brk_s)
-        self.acc_s = np.array(acc_s)
-        self.v = np.array(v)
-        self.t = np.array(t)
 
     def plot_path(self, show=False, color="r^-"):
         self.plot(show=show, color=color)
@@ -202,30 +144,14 @@ class TrackPath(Path):
         points = []
         for i in range(self.size):
             points.append([self.x[i], self.y[i]])
-        self.final_path = Path(points, num_points=500)
 
-    def plot_speed_profile(self):
-        # Speed
-        plt.plot(self.s, self.v, "g-")
+        final_path = Path(points, num_points=500)
+        points = []
+        for i in range(final_path.length):
+            points.append([final_path.x[i], final_path.y[i]])
+        final_track_path = Path(points, raw_mode=True)
+        self.final_path = final_track_path
 
-        # Time
-        plt.plot(self.s, self.t, "y-")
-
-        # Curvature
-        # plt.plot(np.abs(self.k*100), "b-")
-
-        # Max Speed based on global curvature
-        # plt.plot(np.abs(self.v_max), "k-")
-
-        # Throttle
-        # plt.plot(np.array(self.adjust_a)*10+5, "c+")
-
-        plt.show()
-
-INIT = 0
-SEARCH = 1
-OPTIMIZE = 2
-EXTREME = 3
 
 class GAConfig():
     def __init__(self, segmentation):
@@ -233,29 +159,19 @@ class GAConfig():
         self.initial_a = np.full(segmentation.size, 0.5)
         self.a_min = np.full(segmentation.size, 0.1)
         self.a_max = np.full(segmentation.size, 0.9)
-        self.init_config()
 
-    def init_config(self):
-        self.state = INIT
+        self.preserve_a = False
+        self.population = 50
 
-    def search_config(self):
-        self.state = SEARCH
-        self.population_ratio = 1
-        self.cross_ratio = 0.4
-        self.mutation_ratio = 0.4
+        self.c = 0.4
+        self.gc = 0.4*0.1
+        self.gmu = 0.4*0.4
+        self.pmu = 0.4*0.2
+        self.smu = 0.4*0.4
+
         self.mutation_range = np.full(self.segmentation_size, 0.5)
         self.safe_boundary = 0.3
-        self.stablized_generation = 10
-
-    def upgrade(self):
-        if self.state == INIT:
-            self.search_config()
-            return
-
-    def upgradable(self):
-        if self.state == SEARCH:
-            return False
-        return True
+        self.stablized_generation = 6
 
 
 class GAPathGenerator:
@@ -264,11 +180,6 @@ class GAPathGenerator:
         self.s_size = segmentation.size
         self.path = []
         self.selection_p = []
-
-        s_size = segmentation.size
-        self.population_size = int(s_size*config.population_ratio)
-        self.cross_size = int(s_size*config.cross_ratio)
-        self.mutation_size = int(s_size*config.mutation_ratio)
 
         self.config = config
         self.a_min = config.a_min
@@ -290,24 +201,28 @@ class GAPathGenerator:
             self.selection_p.append(self.path[i].adaptability/adaptability_sum)
 
     def init_generation(self):
-        for _ in range(self.population_size-1):
+        if self.config.preserve_a:
+            self.path.append(TrackPath(self.segmentation, self.config.initial_a))
+
+        for _ in range(self.config.population-1):
             a = np.random.uniform(self.a_min, self.a_max)
             self.path.append(TrackPath(self.segmentation, a))
 
     def next_generation(self):
-        for _ in range(int(self.cross_size)):
+        population = self.config.population
+        for _ in range(int(population*self.config.c)):
             self.cross()
 
-        for _ in range(int(self.cross_size*0.1)):
+        for _ in range(int(population*self.config.gc)):
             self.gcross()
 
-        for _ in range(int(self.mutation_size*0.2)):
+        for _ in range(int(population*self.config.smu)):
             self.selected_mutation()
 
-        for _ in range(int(self.mutation_size*0.7)):
+        for _ in range(int(population*self.config.pmu)):
             self.peek_mutation()
 
-        for _ in range(int(self.mutation_size*0.1)):
+        for _ in range(int(population*self.config.gmu)):
             self.general_mutation()
 
     def rws(self):
@@ -405,13 +320,8 @@ class GAPathGenerator:
         a[index] = np.random.uniform(self.a_min[index], self.a_max[index])
         self.path.append(TrackPath(self.segmentation, a))
 
-    def copy(self, times):
-        largest = heapq.nlargest(times, self.path, key=lambda k: k.adaptability)
-        for path in largest:
-            self.path.append(path)
-
     def die(self):
-        num_delete = len(self.path) - self.population_size
+        num_delete = len(self.path) - self.config.population
         if num_delete <= 0:
             return
         smallest = heapq.nsmallest(num_delete, self.path, key=lambda k: k.adaptability)

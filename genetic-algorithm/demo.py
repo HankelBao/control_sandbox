@@ -60,6 +60,10 @@ def main():
     segmentation = Segmentations(track, k_precision=0.8)
     segmentation.create_segmentations()
 
+    # path = TrackPath(segmentation, 0.5*segmentation.width)
+    # path.plot_path_speed()
+    # plt.show()
+
     compare_track = Track(points)
     compare_track.generateTrack()
 
@@ -73,43 +77,41 @@ def main():
     stable_path = None
     save = False
 
-    while (config.upgradable()):
-        print("Upgraded")
-        config.upgrade()
-        generator = GAPathGenerator(segmentation, config)
+    generator = GAPathGenerator(segmentation, config)
 
-        while generator.stablized_generation < config.stablized_generation:
-            generator.ga_advance()
+    while generator.stablized_generation < config.stablized_generation:
+        generator.ga_advance()
 
-            segmentation.plot()
-            generator.plot_best_path()
-            print(np.sum(generator.best_path.t))
-            compare_track.plot(centerline=False, show=False)
-
-            if stable_path:
-                stable_path.plot_path("g-")
-
-            plt.show()
-
-            generation += 1
-            if save:
-                plt.savefig("fig"+str(generation)+".png")
-
-            plt.pause(0.01)
-            plt.clf()
-
-        stable_path = generator.best_path
-        config.initial_a = stable_path.a
-
-        stable_path.plot_path("g-")
+        segmentation.plot()
+        generator.plot_best_path()
+        print(np.sum(generator.best_path.t))
         compare_track.plot(centerline=False, show=False)
+
+        if stable_path:
+            stable_path.plot_path("g-")
+
         plt.show()
+
+        generation += 1
         if save:
-            plt.savefig("fig"+str(generation)+"-stable.png")
+            plt.savefig("fig"+str(generation)+".png")
+
+        plt.pause(0.01)
+        plt.clf()
+
+    stable_path = generator.best_path
+    stable_path.plot_path("g-")
+
+    compare_track.plot(centerline=False, show=False)
+    plt.show()
+
+    if save:
+        plt.savefig("fig"+str(generation)+"-stable.png")
 
     plt.clf()
     stable_path.generate_final_path()
-    stable_path.plot_final_path()
+    stable_path.final_path.plot_path_speed()
+    compare_track.plot(centerline=False, show=False)
     plt.show()
     plt.pause(100)
 
