@@ -19,28 +19,39 @@ class Segmentations:
 
     def create_segmentations(self):
         k_sum = 0.0
+
+        right_points = []
+        left_points = []
+        width = []
         for i in range(self.track.center.length):
             k_sum += np.abs(self.track.center.k[i])
             if k_sum >= self.precision:
                 k_sum = 0
 
-                self.left.append(self.track.left_waypoints[i])
-                self.right.append(self.track.right_waypoints[i])
+                left = self.track.left_waypoints[i]
+                right = self.track.right_waypoints[i]
+                left_points.append(left)
+                right_points.append(right)
 
+                width.append(np.sqrt(np.square(left[0]-right[0])+np.square(left[1]-right[1])))
                 self.size += 1
 
+        self.left = Path(left_points, per=True, raw_mode=True)
+        self.right = Path(right_points, per=True, raw_mode=True)
+        self.width = np.array(width)
+
     def get_point(self, index, a):
-        x1 = self.left[index][0]
-        y1 = self.left[index][1]
-        x2 = self.right[index][0]
-        y2 = self.right[index][1]
-        x = x1 + (x2-x1)*a
-        y = y1 + (y2-y1)*a
-        return (x, y)
+        x1 = self.left.x[index]
+        y1 = self.left.y[index]
+        x2 = self.right.x[index]
+        y2 = self.right.y[index]
+        x = x1 + (x2-x1)/self.width[index]*a
+        y = y1 + (y2-y1)/self.width[index]*a
+        return [x, y]
 
     def plot(self):
         for i in range(self.size):
-            plt.plot([self.left[i][0], self.right[i][0]], [self.left[i][1], self.right[i][1]], "b-")
+            plt.plot([self.left.x[i], self.right.x[i]], [self.left.y[i], self.right.y[i]], "g-")
 
 class Cell:
     def __init__(self, x, y):
@@ -82,7 +93,7 @@ class RAStar:
                     if not any((cell.x == existing_cell.x and cell.y == existing_cell.y) for existing_cell in opl):
                         opl.append(cell)
 
-            print(self.g_score)
+            # print(self.g_score)
 
         currentCell = Cell(0, start_y)
         a = [start_y]
@@ -113,106 +124,211 @@ class RAStar:
         # return np.abs(self.width-x) + np.abs(self.start_y-y)
         return self.g_score[x][y]/x*(self.width-x)
 
-class TrackPath:
-    def __init__(self, segmentation, a):
-        self.segmentation = segmentation
-        self.a = a
+BRK = 0.5
+ACC = 0.1
+class TrackPath(Path):
+    def __init__(self, segmentation: Segmentations, a):
         self.size = segmentation.size
+        self.a = a
 
-        self.create_path()
-        self.create_curvature()
-        self.create_distance()
-        self.create_angle()
+        points = []
+        for i in range(segmentation.size):
+            points.append(segmentation.get_point(i, a[i]))
+        super().__init__(points, per=True, raw_mode=True)
 
-        self.point_adapt = 1/self.c
-        self.adaptability = 1/np.average(np.power(self.c, 2))+np.average(np.power(self.angle*2, 2))+np.min(self.angle)*2-np.average(self.distance)
+        self.update_vmax()
+        self.update_profile()
 
-    def plot_path(self, color="r^-"):
-        x = np.append(self.x, self.x[0])
-        y = np.append(self.y, self.y[0])
-        plt.plot(x, y, color)
+        self.point_adapt = np.abs(1/self.k)
+        self.adaptability = 1/np.average(np.power(self.k, 2))+np.average(np.power(self.yaw*2, 2))+np.min(self.yaw)*2-np.average(self.s)
 
-    def create_curvature(self):
-        self.c = np.full(self.size, 0.0)
+    def update_vmax(self):
         for i in range(self.size):
-            self.c[i] = np.abs(self.__calc_curvature(i))
+            v_max = self.v_max[i]
+            s = 0
+            for j in range(self.size):
+                index = i-j
+                s += self.pd[index]
+                local_v_max = 2*BRK*s + np.square(v_max)
+                if local_v_max < self.v_max[index]:
+                    self.v_max[index] = local_v_max
 
-    def create_distance(self):
-        self.distance = np.full(self.size, 0.0)
+    def update_profile(self):
+        self.adjust_d = []
+        self.adjust_a = []
+        self.v = []
+        self.t = []
+
+        current_speed = 0
+        for i in range(self.size-1):
+            distance = self.pd[i]
+            v_max = self.v_max[i+1]
+            self.v.append(current_speed)
+
+            at = self.calc_adjust_time(i, current_speed)
+            aa = ACC if current_speed <= v_max else -BRK
+            ad = (2*current_speed+aa*at)*at/2
+            # print(ad, ' ', distance)
+            current_speed = current_speed + aa*at
+
+            self.adjust_a.append(aa)
+            self.adjust_d.append(ad)
+            self.t.append(at + (distance-ad)/current_speed)
+
+        # for i in range(self.size-1):
+        #    print(self.v[i], ' ', self.adjust_d[i], ' ', self.adjust_a[i], ' ', self.k[i]*100)
+
+        plt.plot(self.s, self.v, "g-")
+        plt.plot(self.s, np.abs(self.k[:-1]*100), "b-")
+        plt.plot(self.s, np.abs(self.v_max[:-1]), "k-")
+        plt.plot(self.s, np.array(self.adjust_a)*10+5, "c-")
+        plt.show()
+
+    def calc_adjust_time(self, index, current_speed):
+        distance = self.pd[index]
+        v_max = self.v_max[index+1]
+
+        top_speed = np.sqrt(2*ACC*distance + current_speed**2)
+
+        if v_max > top_speed:
+            return (top_speed-current_speed)/ACC
+
+        if current_speed <= v_max:
+            return (v_max-current_speed)/ACC
+
+        if current_speed > v_max:
+            return (current_speed-v_max)/BRK
+
+    def plot_path(self, show=False, color="r^-"):
+        self.plot(show=show, color=color)
+
+    def generate_final_path(self):
+        points = []
         for i in range(self.size):
-            (x1, y1) = (self.x[i], self.y[i])
-            (x2, y2) = self.__next_point(i)
-            self.distance[i] = TrackPath.__distance(x1, y1, x2, y2)
+            points.append([self.x[i], self.y[i]])
+        self.final_path = Path(points, num_points=500)
 
-    def create_angle(self):
-        self.angle = np.full(self.size, 0.0)
-        for i in range(self.size):
-            self.angle[i] = np.abs(self.__calc_angle(i))
+    def plot_final_path(self):
+        # print(self.adjust_d)
+        segmentation_counter=2
+        for i in range(1, self.final_path.length):
+            if self.final_path.s[i-1] > self.s[segmentation_counter-1]:
+                # plt.plot(self.final_path.x[i], self.final_path.y[i], "r*")
+                segmentation_counter += 1
+                if segmentation_counter > self.size-2:
+                    return
 
-    def __calc_angle(self, n):
-        (x1, y1) = self.__prev_point(n)
-        (x2, y2) = (self.x[n], self.y[n])
-        (x3, y3) = self.__next_point(n)
+            print(self.final_path.s[i-1]-self.s[segmentation_counter-2])
+            if self.final_path.s[i-1]-self.s[segmentation_counter-2] < self.adjust_d[segmentation_counter]:
+                if self.adjust_a[segmentation_counter] < 0:
+                    plt.plot(self.final_path.x[i], self.final_path.y[i], "r*")
+                else:
+                    plt.plot(self.final_path.x[i], self.final_path.y[i], "b*")
+            else:
+                plt.plot(self.final_path.x[i], self.final_path.y[i], "c+")
 
-        p1 = chrono.ChVectorD(x1, y1, 0)
-        p2 = chrono.ChVectorD(x2, y2, 0)
-        p3 = chrono.ChVectorD(x3, y3, 0)
 
-        v1 = p2 - p1
-        v2 = p2 - p3
-        ang = math.atan2((v1 % v2).Length(), v1 ^ v2)
-        if chrono.ChVectorD(0, 0, 1) ^ (v1 % v2) > 0.0:
-            ang *= 1
-        return ang#np.arccos((np.square(p12)+np.square(p13)-np.square(p23))/(2*p12*p13))
-
-    def __calc_curvature(self, n):
-        (x1, y1) = self.__prev_point(n)
-        (x2, y2) = (self.x[n], self.y[n])
-        (x3, y3) = self.__next_point(n)
-        area = TrackPath.__area(x1, y1, x2, y2, x3, y3)
-        l1 = TrackPath.__distance(x1, y1, x2, y2)
-        l2 = TrackPath.__distance(x1, y1, x3, y3)
-        l3 = TrackPath.__distance(x2, y2, x3, y3)
-
-        curvature = 0 if l1*l2*l3 == 0 else 4.0*area/(l1*l2*l3)
-        return curvature
-
-    @staticmethod
-    def __area(x1, y1, x2, y2, x3, y3):
-        return (x2-x1)*(y3-y1) - (y2-y1)*(x3-x1)
-
-    def __closest_points(self, n):
-        if n==0 or n==self.size-1:
-            return (self.x[self.size-2], self.y[self.size-2], self.x[1], self.y[1])
-        else:
-            return (self.x[n-1], self.y[n-1], self.x[n+1], self.y[n+1])
-
-    def __next_point(self, n):
-        if n==self.size-1:
-            return (self.x[0], self.y[0])
-        else:
-            return (self.x[n+1], self.y[n+1])
-
-    def __prev_point(self, n):
-        if n==0:
-            return (self.x[-1], self.y[-1])
-        else:
-            return (self.x[n-1], self.y[n-1])
-
-    @staticmethod
-    def __distance(x1, y1, x2, y2):
-        return np.sqrt(np.square(x2-x1)+np.square(y2-y1))
-
-    def create_path(self):
-        self.x = np.full(self.size, 0.0)
-        self.y = np.full(self.size, 0.0)
-        for i in range(self.size):
-            x1 = self.segmentation.left[i][0]
-            y1 = self.segmentation.left[i][1]
-            x2 = self.segmentation.right[i][0]
-            y2 = self.segmentation.right[i][1]
-            self.x[i] = x1 + (x2-x1)*self.a[i]
-            self.y[i] = y1 + (y2-y1)*self.a[i]
+# class TrackPath:
+#     def __init__(self, segmentation, a):
+#         self.segmentation = segmentation
+#         self.a = a
+#         self.size = segmentation.size
+# 
+#         self.create_path()
+#         self.create_curvature()
+#         self.create_distance()
+#         self.create_angle()
+# 
+#         self.point_adapt = 1/self.c
+#         self.adaptability = 1/np.average(np.power(self.c, 2))+np.average(np.power(self.angle*2, 2))+np.min(self.angle)*2-np.average(self.distance)
+# 
+#     def plot_path(self, color="r^-"):
+#         x = np.append(self.x, self.x[0])
+#         y = np.append(self.y, self.y[0])
+#         plt.plot(x, y, color)
+# 
+#     def create_curvature(self):
+#         self.c = np.full(self.size, 0.0)
+#         for i in range(self.size):
+#             self.c[i] = np.abs(self.__calc_curvature(i))
+# 
+#     def create_distance(self):
+#         self.distance = np.full(self.size, 0.0)
+#         for i in range(self.size):
+#             (x1, y1) = (self.x[i], self.y[i])
+#             (x2, y2) = self.__next_point(i)
+#             self.distance[i] = TrackPath.__distance(x1, y1, x2, y2)
+# 
+#     def create_angle(self):
+#         self.angle = np.full(self.size, 0.0)
+#         for i in range(self.size):
+#             self.angle[i] = np.abs(self.__calc_angle(i))
+# 
+#     def __calc_angle(self, n):
+#         (x1, y1) = self.__prev_point(n)
+#         (x2, y2) = (self.x[n], self.y[n])
+#         (x3, y3) = self.__next_point(n)
+# 
+#         p1 = chrono.ChVectorD(x1, y1, 0)
+#         p2 = chrono.ChVectorD(x2, y2, 0)
+#         p3 = chrono.ChVectorD(x3, y3, 0)
+# 
+#         v1 = p2 - p1
+#         v2 = p2 - p3
+#         ang = math.atan2((v1 % v2).Length(), v1 ^ v2)
+#         if chrono.ChVectorD(0, 0, 1) ^ (v1 % v2) > 0.0:
+#             ang *= 1
+#         return ang#np.arccos((np.square(p12)+np.square(p13)-np.square(p23))/(2*p12*p13))
+# 
+#     def __calc_curvature(self, n):
+#         (x1, y1) = self.__prev_point(n)
+#         (x2, y2) = (self.x[n], self.y[n])
+#         (x3, y3) = self.__next_point(n)
+#         area = TrackPath.__area(x1, y1, x2, y2, x3, y3)
+#         l1 = TrackPath.__distance(x1, y1, x2, y2)
+#         l2 = TrackPath.__distance(x1, y1, x3, y3)
+#         l3 = TrackPath.__distance(x2, y2, x3, y3)
+# 
+#         curvature = 0 if l1*l2*l3 == 0 else 4.0*area/(l1*l2*l3)
+#         return curvature
+# 
+#     @staticmethod
+#     def __area(x1, y1, x2, y2, x3, y3):
+#         return (x2-x1)*(y3-y1) - (y2-y1)*(x3-x1)
+# 
+#     def __closest_points(self, n):
+#         if n==0 or n==self.size-1:
+#             return (self.x[self.size-2], self.y[self.size-2], self.x[1], self.y[1])
+#         else:
+#             return (self.x[n-1], self.y[n-1], self.x[n+1], self.y[n+1])
+# 
+#     def __next_point(self, n):
+#         if n==self.size-1:
+#             return (self.x[0], self.y[0])
+#         else:
+#             return (self.x[n+1], self.y[n+1])
+# 
+#     def __prev_point(self, n):
+#         if n==0:
+#             return (self.x[-1], self.y[-1])
+#         else:
+#             return (self.x[n-1], self.y[n-1])
+# 
+#     @staticmethod
+#     def __distance(x1, y1, x2, y2):
+#         return np.sqrt(np.square(x2-x1)+np.square(y2-y1))
+# 
+#     def create_path(self):
+#         self.x = np.full(self.size, 0.0)
+#         self.y = np.full(self.size, 0.0)
+#         for i in range(self.size):
+#             (self.x[i], self.y[i]) = self.segmentation.get_point(i, self.a[i])
+#             # x1 = self.segmentation.left[i][0]
+#             # y1 = self.segmentation.left[i][1]
+#             # x2 = self.segmentation.right[i][0]
+#             # y2 = self.segmentation.right[i][1]
+#             # self.x[i] = x1 + (x2-x1)*self.a[i]
+#             # self.y[i] = y1 + (y2-y1)*self.a[i]
 
 INIT = 0
 SEARCH = 1
@@ -223,6 +339,8 @@ class GAConfig():
     def __init__(self, segmentation):
         self.segmentation_size = segmentation.size
         self.initial_a = np.full(segmentation.size, 0.5)
+        self.a_min = np.full(segmentation.size, 0.1)
+        self.a_max = np.full(segmentation.size, 0.9)
         self.init_config()
 
     def init_config(self):
@@ -230,14 +348,14 @@ class GAConfig():
 
     def search_config(self):
         self.state = SEARCH
-        self.population_ratio = 0.5
+        self.population_ratio = 1
         self.cross_ratio = 0.4
         self.smutation_ratio = 0.4
         self.gmutation_ratio = 0.4
         self.copy_ratio = 0
         self.mutation_range = np.full(self.segmentation_size, 0.5)
         self.safe_boundary = 0.3
-        self.stablized_generation = 40
+        self.stablized_generation = 5
 
     def optimize_config(self):
         self.state = OPTIMIZE
@@ -293,8 +411,10 @@ class GAPathGenerator:
         self.copy_size = int(s_size*config.copy_ratio)
 
         self.config = config
-        self.a_min = np.maximum(config.initial_a-config.mutation_range, np.full(s_size, config.safe_boundary))
-        self.a_max = np.minimum(config.initial_a+config.mutation_range, np.full(s_size, 1-config.safe_boundary))
+        # self.a_min = np.maximum(config.initial_a-config.mutation_range, np.full(s_size, config.safe_boundary))
+        # self.a_max = np.minimum(config.initial_a+config.mutation_range, np.full(s_size, 1-config.safe_boundary))
+        self.a_min = config.a_min
+        self.a_max = config.a_max
 
         self.best_path = None
         self.stablized_adaptability = 0.0
@@ -312,7 +432,7 @@ class GAPathGenerator:
             self.selection_p.append(self.path[i].adaptability/adaptability_sum)
 
     def init_generation(self):
-        self.path.append(TrackPath(self.segmentation, self.config.initial_a))
+        # self.path.append(TrackPath(self.segmentation, self.config.initial_a))
         for _ in range(self.population_size-1):
             a = np.random.uniform(self.a_min, self.a_max)
             self.path.append(TrackPath(self.segmentation, a))
@@ -321,10 +441,10 @@ class GAPathGenerator:
         for _ in range(self.cross_size):
             self.cross()
 
-        for _ in range(int(self.cross_size)):
+        for _ in range(int(self.cross_size*0.1)):
             self.gcross()
 
-        for _ in range(int(self.smutation_size*0.0)):
+        for _ in range(int(self.smutation_size*1)):
             self.selected_mutation()
 
         for _ in range(int(self.smutation_size)):
@@ -381,7 +501,7 @@ class GAPathGenerator:
         a = deepcopy(path.a)
 
         index = local_rws(path)
-        a[index] = np.random.uniform(0, 1)
+        a[index] = np.clip(np.random.normal(a[index], 0.3), self.a_min[index], self.a_max[index])#np.random.uniform(0, 1)
         influence_range = 0 #random.randint(0, 1)
         for i in range(influence_range):
             try:
@@ -414,7 +534,7 @@ class GAPathGenerator:
         path = self.path[self.rws()]
         a = deepcopy(path.a)
         index = random.randint(0, self.s_size-1)
-        a[index] = np.random.uniform(0, 1)
+        a[index] = np.random.uniform(self.a_min[index], self.a_max[index])
         self.path.append(TrackPath(self.segmentation, a))
 
     def copy(self, times):

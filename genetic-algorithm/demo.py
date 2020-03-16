@@ -59,27 +59,32 @@ def main():
 
     segmentation = Segmentations(track, k_precision=0.8)
     segmentation.create_segmentations()
-    segmentation.plot()
+    # segmentation.plot()
 
-    rastar = RAStar(segmentation, neightbors_ratio=0.2, divisions=10)
-    a = rastar.find_a(0.5)
+    # rastar = RAStar(segmentation, neightbors_ratio=0.2, divisions=10)
+    # a = rastar.find_a(0.5)
 
-    # path = TrackPath(segmentation, a)
-    # path.plot_path()
+    a = 0.5 * segmentation.width
+    path = TrackPath(segmentation, a)
+    path.generate_final_path()
+    path.plot_final_path()
 
     compare_track = Track(points)
     compare_track.generateTrack()
-    # compare_track.plot(show=False, centerline=False)
+    #compare_track.plot(show=False, centerline=False)
+
+    plt.show()
 
     # plt.show()
 
     plt.ion()
 
     config = GAConfig(segmentation)
-    config.initial_a = a
+    config.initial_a = 0.5 * segmentation.width
+    config.a_min = np.full(segmentation.size, 0.1)
+    config.a_max = segmentation.width-0.1
     generation = 0
     stable_path = None
-    stable_generation = 0
     save = False
 
     while (config.upgradable()):
@@ -95,7 +100,7 @@ def main():
             generator.plot_best_path()
             compare_track.plot(centerline=False, show=False)
 
-            print(1/np.average(generator.best_path.c))
+            print(1/np.average(generator.best_path.k))
 
             if stable_path:
                 stable_path.plot_path("g-")
@@ -111,12 +116,19 @@ def main():
 
         stable_path = generator.best_path
         config.initial_a = stable_path.a
+        # config.
 
         stable_path.plot_path("g-")
         compare_track.plot(centerline=False, show=False)
         plt.show()
         if save:
             plt.savefig("fig"+str(generation)+"-stable.png")
+
+    plt.clf()
+    stable_path.generate_final_path()
+    stable_path.plot_final_path()
+    plt.show()
+    plt.pause(100)
 
 
     # center = []
