@@ -36,8 +36,8 @@ class Segmentations:
                 width.append(np.sqrt(np.square(left[0]-right[0])+np.square(left[1]-right[1])))
                 self.size += 1
 
-        self.left = Path(left_points, per=True, raw_mode=True)
-        self.right = Path(right_points, per=True, raw_mode=True)
+        self.left = Path(left_points, closed=True, raw_mode=True)
+        self.right = Path(right_points, closed=True, raw_mode=True)
         self.width = np.array(width)
 
     def get_point(self, index, a):
@@ -134,7 +134,7 @@ class TrackPath(Path):
         points = []
         for i in range(segmentation.size):
             points.append(segmentation.get_point(i, a[i]))
-        super().__init__(points, per=True, raw_mode=True)
+        super().__init__(points, closed=True, raw_mode=True)
 
         self.update_vmax()
         self.update_profile()
@@ -233,53 +233,53 @@ class TrackPath(Path):
 #         self.segmentation = segmentation
 #         self.a = a
 #         self.size = segmentation.size
-# 
+#
 #         self.create_path()
 #         self.create_curvature()
 #         self.create_distance()
 #         self.create_angle()
-# 
+#
 #         self.point_adapt = 1/self.c
 #         self.adaptability = 1/np.average(np.power(self.c, 2))+np.average(np.power(self.angle*2, 2))+np.min(self.angle)*2-np.average(self.distance)
-# 
+#
 #     def plot_path(self, color="r^-"):
 #         x = np.append(self.x, self.x[0])
 #         y = np.append(self.y, self.y[0])
 #         plt.plot(x, y, color)
-# 
+#
 #     def create_curvature(self):
 #         self.c = np.full(self.size, 0.0)
 #         for i in range(self.size):
 #             self.c[i] = np.abs(self.__calc_curvature(i))
-# 
+#
 #     def create_distance(self):
 #         self.distance = np.full(self.size, 0.0)
 #         for i in range(self.size):
 #             (x1, y1) = (self.x[i], self.y[i])
 #             (x2, y2) = self.__next_point(i)
 #             self.distance[i] = TrackPath.__distance(x1, y1, x2, y2)
-# 
+#
 #     def create_angle(self):
 #         self.angle = np.full(self.size, 0.0)
 #         for i in range(self.size):
 #             self.angle[i] = np.abs(self.__calc_angle(i))
-# 
+#
 #     def __calc_angle(self, n):
 #         (x1, y1) = self.__prev_point(n)
 #         (x2, y2) = (self.x[n], self.y[n])
 #         (x3, y3) = self.__next_point(n)
-# 
+#
 #         p1 = chrono.ChVectorD(x1, y1, 0)
 #         p2 = chrono.ChVectorD(x2, y2, 0)
 #         p3 = chrono.ChVectorD(x3, y3, 0)
-# 
+#
 #         v1 = p2 - p1
 #         v2 = p2 - p3
 #         ang = math.atan2((v1 % v2).Length(), v1 ^ v2)
 #         if chrono.ChVectorD(0, 0, 1) ^ (v1 % v2) > 0.0:
 #             ang *= 1
 #         return ang#np.arccos((np.square(p12)+np.square(p13)-np.square(p23))/(2*p12*p13))
-# 
+#
 #     def __calc_curvature(self, n):
 #         (x1, y1) = self.__prev_point(n)
 #         (x2, y2) = (self.x[n], self.y[n])
@@ -288,36 +288,36 @@ class TrackPath(Path):
 #         l1 = TrackPath.__distance(x1, y1, x2, y2)
 #         l2 = TrackPath.__distance(x1, y1, x3, y3)
 #         l3 = TrackPath.__distance(x2, y2, x3, y3)
-# 
+#
 #         curvature = 0 if l1*l2*l3 == 0 else 4.0*area/(l1*l2*l3)
 #         return curvature
-# 
+#
 #     @staticmethod
 #     def __area(x1, y1, x2, y2, x3, y3):
 #         return (x2-x1)*(y3-y1) - (y2-y1)*(x3-x1)
-# 
+#
 #     def __closest_points(self, n):
 #         if n==0 or n==self.size-1:
 #             return (self.x[self.size-2], self.y[self.size-2], self.x[1], self.y[1])
 #         else:
 #             return (self.x[n-1], self.y[n-1], self.x[n+1], self.y[n+1])
-# 
+#
 #     def __next_point(self, n):
 #         if n==self.size-1:
 #             return (self.x[0], self.y[0])
 #         else:
 #             return (self.x[n+1], self.y[n+1])
-# 
+#
 #     def __prev_point(self, n):
 #         if n==0:
 #             return (self.x[-1], self.y[-1])
 #         else:
 #             return (self.x[n-1], self.y[n-1])
-# 
+#
 #     @staticmethod
 #     def __distance(x1, y1, x2, y2):
 #         return np.sqrt(np.square(x2-x1)+np.square(y2-y1))
-# 
+#
 #     def create_path(self):
 #         self.x = np.full(self.size, 0.0)
 #         self.y = np.full(self.size, 0.0)

@@ -20,7 +20,7 @@ def main():
 
     # Render preferences
     matplotlib = 1
-    irrlicht = 1
+    irrlicht = 0
 
     # Chrono simulation step size
     ch_step_size = 1e-2
@@ -87,7 +87,7 @@ def main():
         controller.Advance(ch_step_size, vehicle)
 
         if matplotlib and ch_time >= mat_time:
-            if not matplotlib_wrapper.Advance(mat_step_size):
+            if not matplotlib_wrapper.Advance(mat_step_size, save=False):
                 print("Quit message received.")
                 matplotlib_wrapper.close()
                 break

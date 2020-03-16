@@ -86,10 +86,11 @@ def main():
     generation = 0
     stable_path = None
     save = False
+    print('testestsetset')
 
     while (config.upgradable()):
         print("Upgraded")
-        print(config.state)
+        # print(config.state)
         config.upgrade()
         generator = GAPathGenerator(segmentation, config)
 
@@ -100,7 +101,7 @@ def main():
             generator.plot_best_path()
             compare_track.plot(centerline=False, show=False)
 
-            print(1/np.average(generator.best_path.k))
+            # print(1/np.average(generator.best_path.k))
 
             if stable_path:
                 stable_path.plot_path("g-")
