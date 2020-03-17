@@ -17,7 +17,7 @@ class GAConfig():
         self.a_min = np.full(segmentation.size, 0.1)
         self.a_max = np.full(segmentation.size, 0.9)
 
-        self.population = int(segmentation.size)
+        self.population = int(segmentation.size*5)
 
         self.c = 0.4
         self.gc = 0.4
@@ -28,7 +28,7 @@ class GAConfig():
 
         self.mutation_range = np.full(self.segmentation_size, 0.5)
         self.safe_boundary = 0.3
-        self.stablized_generation = 6
+        self.stablized_generation = 5
 
 
 class GAPathGenerator:
@@ -47,6 +47,7 @@ class GAPathGenerator:
         self.stablized_generation = 0
 
         self.init_generation()
+        self.generation = 0
 
     def update_selection_p(self):
         adaptability_sum = 0
@@ -206,6 +207,8 @@ class GAPathGenerator:
 
     def ga_advance(self):
         self.next_generation()
+        self.generation += 1
+
         self.die()
         self.update_selection_p()
         self.best_path = heapq.nlargest(1, self.path, key=lambda k: k.adaptability)[0]
@@ -216,7 +219,10 @@ class GAPathGenerator:
             self.stablized_adaptability = self.best_path.adaptability
             self.stablized_generation = 0
 
-        self.config.population = int(self.segmentation.size * (1.1 ** self.stablized_generation))
+        adjusted_population = int(self.segmentation.size * 2 * (1.3 ** self.stablized_generation))
+        if adjusted_population > self.segmentation.size * 8:
+            adjusted_population = self.segmentation.size * 8
+        self.config.population = adjusted_population
 
     def plot_best_path(self):
         self.best_path.plot_path()
