@@ -20,7 +20,7 @@ def main():
 
     # Render preferences
     matplotlib = 1
-    irrlicht = 0
+    irrlicht = 1
 
     # Chrono simulation step size
     ch_step_size = 1e-2
