@@ -57,7 +57,7 @@ def main():
     track = Track(points)
     track.generateTrack()
 
-    segmentation = Segmentations(track, k_precision=0.8)
+    segmentation = Segmentations(track, k_precision=0.6)
     segmentation.create_segmentations()
 
     # path = TrackPath(segmentation, 0.5*segmentation.width)
@@ -108,11 +108,13 @@ def main():
     if save:
         plt.savefig("fig"+str(generation)+"-stable.png")
 
-    plt.clf()
     stable_path.generate_final_path()
+
+    plt.clf()
     stable_path.final_path.plot_path_speed()
     compare_track.plot(centerline=False, show=False)
     plt.show()
+
     plt.pause(100)
 
 if __name__ == "__main__":

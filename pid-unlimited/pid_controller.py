@@ -151,7 +151,7 @@ class PIDLongitudinalController:
 
         # Return PID output (steering value)
         throttle = np.clip(
-            self.Kp * self.err + self.Ki * self.erri + self.Kd * self.errd, -2.0, 2.0
+            self.Kp * self.err + self.Ki * self.erri + self.Kd * self.errd, -1.0, 1.0
         )
 
         if throttle > 0:

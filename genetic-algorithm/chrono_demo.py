@@ -36,122 +36,121 @@ def main():
     # ------------
     # Create track
     # ------------
-    # reversed = random.randint(0,1)
-    # track = RandomTrack(x_max=50, y_max=50)
-    # track.generateTrack(seed=seed, reversed=reversed)
+    reversed = random.randint(0,1)
+    track = RandomTrack(x_max=50, y_max=50)
+    track.generateTrack(seed=seed, reversed=reversed)
     # print('Using seed :: {}'.format(seed))
-    points = [
-        [49.8, 132.9],
-        [60.3, 129.3],
-        [75.6, 129.0],
-        [87.9, 131.7],
-        [96.9, 129.6],
-        [111.0, 120.0],
-        [115.2, 110.7],
-        [120.6, 96.9],
-        [127.8, 88.5],
-        [135.9, 77.4],
-        [135.9, 65.1],
-        [133.2, 51.3],
-        [128.4, 43.2],
-        [119.7, 36.3],
-        [105.0, 35.7],
-        [90.0, 36.3],
-        [82.5, 46.2],
-        [82.5, 63.6],
-        [83.4, 82.2],
-        [77.1, 93.9],
-        [61.2, 88.5],
-        [55.5, 73.5],
-        [57.9, 54.6],
-        [66.6, 45.0],
-        [75.9, 36.3],
-        [79.2, 25.5],
-        [78.0, 13.2],
-        [65.1, 6.0],
-        [50.7, 6.0],
-        [36.6, 11.7],
-        [29.1, 21.3],
-        [24.0, 36.9],
-        [24.0, 56.1],
-        [29.1, 70.8],
-        [24.9, 77.7],
-        [13.5, 77.7],
-        [6.3, 81.6],
-        [5.7, 92.7],
-        [6.3, 107.7],
-        [8.7, 118.2],
-        [15.3, 122.7],
-        [24.3, 125.4],
-        [31.2, 126.0],
-        [40.8, 129.6],
-        [49.8, 132.9],
-    ]
+    # points = [
+    #     [49.8, 132.9],
+    #     [60.3, 129.3],
+    #     [75.6, 129.0],
+    #     [87.9, 131.7],
+    #     [96.9, 129.6],
+    #     [111.0, 120.0],
+    #     [115.2, 110.7],
+    #     [120.6, 96.9],
+    #     [127.8, 88.5],
+    #     [135.9, 77.4],
+    #     [135.9, 65.1],
+    #     [133.2, 51.3],
+    #     [128.4, 43.2],
+    #     [119.7, 36.3],
+    #     [105.0, 35.7],
+    #     [90.0, 36.3],
+    #     [82.5, 46.2],
+    #     [82.5, 63.6],
+    #     [83.4, 82.2],
+    #     [77.1, 93.9],
+    #     [61.2, 88.5],
+    #     [55.5, 73.5],
+    #     [57.9, 54.6],
+    #     [66.6, 45.0],
+    #     [75.9, 36.3],
+    #     [79.2, 25.5],
+    #     [78.0, 13.2],
+    #     [65.1, 6.0],
+    #     [50.7, 6.0],
+    #     [36.6, 11.7],
+    #     [29.1, 21.3],
+    #     [24.0, 36.9],
+    #     [24.0, 56.1],
+    #     [29.1, 70.8],
+    #     [24.9, 77.7],
+    #     [13.5, 77.7],
+    #     [6.3, 81.6],
+    #     [5.7, 92.7],
+    #     [6.3, 107.7],
+    #     [8.7, 118.2],
+    #     [15.3, 122.7],
+    #     [24.3, 125.4],
+    #     [31.2, 126.0],
+    #     [40.8, 129.6],
+    #     [49.8, 132.9],
+    # ]
 
-    track = Track(points)
-    track.generateTrack()
+    # track = Track(points)
+    # track.generateTrack()
 
-    segmentation = Segmentations(track, k_precision=0.8)
+    segmentation = Segmentations(track, k_precision=2.5)
     segmentation.create_segmentations()
+
     config = GAConfig(segmentation)
     config.initial_a = 0.5 * segmentation.width
-    config.a_min = np.full(segmentation.size, 0.5)
-    config.a_max = segmentation.width-0.5
+    config.a_min = np.full(segmentation.size, 2.5)
+    config.a_max = segmentation.width-2.5
     generation = 0
     stable_path = None
     save = False
-    while (config.upgradable()):
-        print("Upgraded")
-        config.upgrade()
-        generator = GAPathGenerator(segmentation, config)
 
-        while generator.stablized_generation < config.stablized_generation:
-            print('Upgrade')
-            generator.ga_advance()
+    plt.ion()
 
-            # segmentation.plot()
-            # generator.plot_best_path()
-            # compare_track.plot(centerline=False, show=False)
+    generator = GAPathGenerator(segmentation, config)
 
-            # print(1/np.average(generator.best_path.k))
+    while generator.stablized_generation < config.stablized_generation:
+        generator.ga_advance()
 
-            # if stable_path:
-            #     stable_path.plot_path("g-")
+        segmentation.plot()
+        generator.plot_best_path()
+        lap_time = np.sum(generator.best_path.t)
+        centerline_time = np.sum(track.center.t)
+        print("Generation " + str(generation) + ": Lap time " + str(lap_time) + "s; saving " + str(centerline_time-lap_time) + "s from centerline_time.")
 
-            # plt.show()
+        if stable_path:
+            stable_path.plot_path("g-")
 
-            generation += 1
+        plt.show()
 
-            # plt.pause(0.01)
-            # plt.clf()
+        generation += 1
+        if save:
+            plt.savefig("fig"+str(generation)+".png")
 
-        stable_path = generator.best_path
-        config.initial_a = stable_path.a
-        # config.
+        plt.pause(0.01)
+        plt.clf()
 
-        # stable_path.plot_path("g-")
-        # compare_track.plot(centerline=False, show=False)
-        # plt.show()
-    import matplotlib.pyplot as plt
+    stable_path = generator.best_path
+    stable_path.plot_path("g-")
+
+    plt.show()
+
+    if save:
+        plt.savefig("fig"+str(generation)+"-stable.png")
+
+    stable_path.generate_final_path()
 
     plt.clf()
     stable_path.generate_final_path()
     # stable_path.plot_final_path()
     stable_path.plot(color="-b", show=False)
 
-    v = stable_path.v
+    v = stable_path.final_path.v
 
     width = track.width
-    track = Track(points, width=width)
-    track.generateTrack()
 
-    points = []
-    for i in range(len(stable_path.final_path.x)):
-        points.append([stable_path.final_path.x[i], stable_path.final_path.y[i]])
+    plt.clf()
 
-
-    path = Path(points)
+    path = stable_path.final_path
     path.plot(color='-b', show=False)
+    path.plot_speed_profile()
     # path.v_max = v
     # plt.pause(1)
 
@@ -167,8 +166,8 @@ def main():
     # Longitudinal controller (throttle and braking)
     long_controller = PIDLongitudinalController(path)
     long_controller.SetGains(Kp=0.4, Ki=0, Kd=0)
-    long_controller.SetLookAheadDistance(dist=5.0)
-    long_controller.SetTargetSpeed(speed=10.0)
+    long_controller.SetLookAheadDistance(dist=1)
+    # long_controller.SetTargetSpeed(speed=10.0)
 
     # PID controller (wraps both lateral and longitudinal controllers)
     controller = PIDController(lat_controller, long_controller)
@@ -215,7 +214,7 @@ def main():
         controller.Advance(ch_step_size, vehicle)
 
         if matplotlib and ch_time >= mat_time:
-            if not matplotlib_wrapper.Advance(mat_step_size, save=True):
+            if not matplotlib_wrapper.Advance(mat_step_size, save=False):
                 print("Quit message received.")
                 matplotlib_wrapper.close()
                 break

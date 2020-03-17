@@ -161,13 +161,14 @@ class GAConfig():
         self.a_max = np.full(segmentation.size, 0.9)
 
         self.preserve_a = False
-        self.population = 50
+        self.population = int(segmentation.size*8)
 
         self.c = 0.4
-        self.gc = 0.4*0.1
-        self.gmu = 0.4*0.4
-        self.pmu = 0.4*0.2
-        self.smu = 0.4*0.4
+        self.gc = 0.4
+        self.gmu = 0.4
+        self.pmu = 0.4
+        self.smu = 0.4
+        self.cmu = 0.4
 
         self.mutation_range = np.full(self.segmentation_size, 0.5)
         self.safe_boundary = 0.3
@@ -225,6 +226,9 @@ class GAPathGenerator:
         for _ in range(int(population*self.config.gmu)):
             self.general_mutation()
 
+        for _ in range(int(population*self.config.cmu)):
+            self.chain_mutation()
+
     def rws(self):
         sum = 0
         rand = random.uniform(0, 1)
@@ -278,14 +282,6 @@ class GAPathGenerator:
 
         index = self.local_rws(path)
         a[index] = np.clip(np.random.normal(a[index], (self.a_max[index]-self.a_min[index])/4), self.a_min[index], self.a_max[index])#np.random.uniform(0, 1)
-        influence_range = 0
-        for i in range(influence_range):
-            try:
-                a[index-i] = np.random.uniform(self.a_min[index-i], self.a_max[index-i])
-                a[index+i] = np.random.uniform(self.a_min[index-i], self.a_max[index+i])
-            except:
-                pass
-
         self.path.append(TrackPath(self.segmentation, a))
 
     def peek_mutation(self):
@@ -300,7 +296,21 @@ class GAPathGenerator:
         places = np.where(path.point_adapt == worst_a)
         for index in places:
             a[index] = np.random.uniform(self.a_min[index], self.a_max[index])
-            influence_range = 0
+
+        self.path.append(TrackPath(self.segmentation, a))
+
+    def chain_mutation(self):
+        """
+        Optimize the worst point and points around it
+        """
+        path = self.path[self.rws()]
+        a = deepcopy(path.a)
+        worst_a = np.min(path.point_adapt)
+
+        places = np.where(path.point_adapt == worst_a)
+        for index in places:
+            a[index] = np.random.uniform(self.a_min[index], self.a_max[index])
+            influence_range = 1
             for i in range(influence_range):
                 try:
                     a[index-i] = np.random.uniform(self.a_min[index-i], self.a_max[index-i])
@@ -321,14 +331,25 @@ class GAPathGenerator:
         self.path.append(TrackPath(self.segmentation, a))
 
     def die(self):
-        num_delete = len(self.path) - self.config.population
-        if num_delete <= 0:
-            return
-        smallest = heapq.nsmallest(num_delete, self.path, key=lambda k: k.adaptability)
-        for path in smallest:
-            self.path.remove(path)
-        if len(self.path) == 0:
-            print("Really?")
+        adapt = np.array([self.path[i].adaptability for i in range(len(self.path))])
+
+        old_path = self.path
+        self.path = []
+
+        # Third quartile (Q3) 
+        Q3 = np.percentile(adapt, 75)
+        for path in old_path:
+            if path.adaptability >= Q3:
+                self.path.append(path)
+
+        # smallest = heapq.nsmallest(num_delete, self.path, key=lambda k: k.adaptability)
+        # for path in smallest:
+        #     self.path.remove(path)
+
+        left_len = len(self.path)
+        while len(self.path) < self.config.population:
+            for i in range(left_len):
+                self.path.append(self.path[i])
 
     def ga_advance(self):
         self.next_generation()
