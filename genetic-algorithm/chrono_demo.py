@@ -92,7 +92,7 @@ def main():
     # track = Track(points)
     # track.generateTrack()
 
-    segmentation = Segmentations(track, k_precision=2.5)
+    segmentation = Segmentations(track, k_precision=0.5)
     segmentation.create_segmentations()
 
     config = GAConfig(segmentation)

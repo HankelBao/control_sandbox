@@ -14,15 +14,18 @@ class Segmentations:
         self.precision = k_precision
 
     def create_segmentations(self):
-        k_sum = 0.0
+        # sk = curvature * distance
+        sk_sum = 0.0
 
         right_points = []
         left_points = []
         width = []
         for i in range(self.track.center.length):
-            k_sum += np.abs(self.track.center.k[i])
-            if k_sum >= self.precision:
-                k_sum = 0
+            distance = 0 if i == 0 else self.track.center.ps[i-1]
+            k = np.abs(self.track.center.k[i])
+            sk_sum += distance * k
+            if sk_sum >= self.precision:
+                sk_sum = 0
 
                 left = self.track.left_waypoints[i]
                 right = self.track.right_waypoints[i]

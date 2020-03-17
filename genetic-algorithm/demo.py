@@ -1,6 +1,7 @@
 from control_utilities.track import RandomTrack, Track, Path
-from track_path import TrackPath, GAPathGenerator, GAConfig, Segmentations, RAStar
 from matplotlib import pyplot as plt
+from ga import GAConfig, GAPathGenerator
+from segmentation import Segmentations, TrackPath
 import numpy as np
 import heapq
 import os
@@ -57,65 +58,12 @@ def main():
     track = Track(points)
     track.generateTrack()
 
-    segmentation = Segmentations(track, k_precision=0.6)
+    segmentation = Segmentations(track, k_precision=0.5)
     segmentation.create_segmentations()
+    segmentation.plot()
 
-    # path = TrackPath(segmentation, 0.5*segmentation.width)
-    # path.plot_path_speed()
-    # plt.show()
-
-    compare_track = Track(points)
-    compare_track.generateTrack()
-
-    plt.ion()
-
-    config = GAConfig(segmentation)
-    config.initial_a = 0.5 * segmentation.width
-    config.a_min = np.full(segmentation.size, 2)
-    config.a_max = segmentation.width-2
-    generation = 0
-    stable_path = None
-    save = False
-
-    generator = GAPathGenerator(segmentation, config)
-
-    while generator.stablized_generation < config.stablized_generation:
-        generator.ga_advance()
-
-        segmentation.plot()
-        generator.plot_best_path()
-        print(np.sum(generator.best_path.t))
-        compare_track.plot(centerline=False, show=False)
-
-        if stable_path:
-            stable_path.plot_path("g-")
-
-        plt.show()
-
-        generation += 1
-        if save:
-            plt.savefig("fig"+str(generation)+".png")
-
-        plt.pause(0.01)
-        plt.clf()
-
-    stable_path = generator.best_path
-    stable_path.plot_path("g-")
-
-    compare_track.plot(centerline=False, show=False)
     plt.show()
 
-    if save:
-        plt.savefig("fig"+str(generation)+"-stable.png")
-
-    stable_path.generate_final_path()
-
-    plt.clf()
-    stable_path.final_path.plot_path_speed()
-    compare_track.plot(centerline=False, show=False)
-    plt.show()
-
-    plt.pause(100)
 
 if __name__ == "__main__":
     main()
