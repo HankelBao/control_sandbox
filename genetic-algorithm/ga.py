@@ -216,5 +216,7 @@ class GAPathGenerator:
             self.stablized_adaptability = self.best_path.adaptability
             self.stablized_generation = 0
 
+        self.config.population = int(self.segmentation.size * (1.1 ** self.stablized_generation))
+
     def plot_best_path(self):
         self.best_path.plot_path()

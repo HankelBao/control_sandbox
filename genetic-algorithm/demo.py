@@ -57,8 +57,9 @@ def main():
 
     track = Track(points)
     track.generateTrack()
+    print(len(track.center.x))
 
-    segmentation = Segmentations(track, k_precision=0.5)
+    segmentation = Segmentations(track)
     segmentation.create_segmentations()
     segmentation.plot()
 

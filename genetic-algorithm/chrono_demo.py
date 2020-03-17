@@ -93,11 +93,10 @@ def main():
             [40.8, 129.6],
             [49.8, 132.9],
         ]
-
         track = Track(points)
         track.generateTrack()
 
-    segmentation = Segmentations(track, k_precision=0.5)
+    segmentation = Segmentations(track)
     segmentation.create_segmentations()
 
     config = GAConfig(segmentation)
@@ -114,22 +113,17 @@ def main():
 
     while generator.stablized_generation < config.stablized_generation:
         generator.ga_advance()
-
-        segmentation.plot()
         generator.plot_best_path()
+        generation += 1
+
         lap_time = np.sum(generator.best_path.t)
         centerline_time = np.sum(track.center.t)
         print("Generation " + str(generation) + ": Lap time " + str(lap_time) + "s; saving " + str(centerline_time-lap_time) + "s from centerline_time.")
 
-        if stable_path:
-            stable_path.plot_path("g-")
-
+        segmentation.plot()
         plt.show()
-
-        generation += 1
         if save:
             plt.savefig("fig"+str(generation)+".png")
-
         plt.pause(0.01)
         plt.clf()
 

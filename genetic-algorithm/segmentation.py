@@ -5,27 +5,33 @@ from control_utilities.track import Track
 from control_utilities.path import Path
 
 class Segmentations:
-    def __init__(self, track, k_precision=0.800):
+    def __init__(self, track, percision=0.500, max_distance=15):
         self.left = []
         self.right = []
         self.width = []
         self.track = track
         self.size = 0
-        self.precision = k_precision
+        self.precision = percision
+        self.max_distance = max_distance
 
     def create_segmentations(self):
         # sk = curvature * distance
         sk_sum = 0.0
+        cum_distance = 0.0
 
         right_points = []
         left_points = []
         width = []
         for i in range(self.track.center.length):
             distance = 0 if i == 0 else self.track.center.ps[i-1]
+            cum_distance += distance
             k = np.abs(self.track.center.k[i])
             sk_sum += distance * k
-            if sk_sum >= self.precision:
+            if sk_sum >= self.precision or \
+                cum_distance >= self.max_distance or \
+                i == self.track.center.length-1:
                 sk_sum = 0
+                cum_distance = 0
 
                 left = self.track.left_waypoints[i]
                 right = self.track.right_waypoints[i]
