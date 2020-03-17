@@ -8,7 +8,33 @@ import math
 from copy import deepcopy
 import pychrono as chrono
 
-from segmentation import Segmentations, TrackPath
+from segmentation import Segmentations
+
+class TrackPath(Path):
+    def __init__(self, segmentation: Segmentations, a):
+        self.size = segmentation.size
+        self.a = a
+
+        points = segmentation.get_points(a)
+        super().__init__(points, closed=True, raw_mode=True)
+
+        self.adaptability = -np.sum(self.t)
+        self.point_adapt = self.v_max
+
+    def plot_path(self, show=False, color="r^-"):
+        self.plot(show=show, color=color)
+
+    def generate_final_path(self):
+        points = []
+        for i in range(self.size):
+            points.append([self.x[i], self.y[i]])
+
+        final_path = Path(points, num_points=500)
+        points = []
+        for i in range(final_path.length):
+            points.append([final_path.x[i], final_path.y[i]])
+        final_track_path = Path(points, raw_mode=True)
+        self.final_path = final_track_path
 
 class GAConfig():
     def __init__(self, segmentation):
