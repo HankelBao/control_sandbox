@@ -1,5 +1,13 @@
+"""
+
+This module enables Genetic Algorithm on tracks for racing.
+
+Copyright (C) 2020, Hankel Bao <hankelbao@outlook.com>
+
+"""
 from control_utilities.track import Track
 from control_utilities.path import Path
+from control_utilities.segmentation import Segmentations
 from matplotlib import pyplot as plt
 import numpy as np
 import random
@@ -8,7 +16,6 @@ import math
 from copy import deepcopy
 import pychrono as chrono
 
-from segmentation import Segmentations
 
 class TrackPath(Path):
     def __init__(self, segmentation: Segmentations, a):

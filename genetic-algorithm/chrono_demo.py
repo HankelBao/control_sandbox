@@ -4,11 +4,10 @@ from control_utilities.chrono_terrain import ChronoTerrain
 from control_utilities.chrono_utilities import calcPose, createChronoSystem, setDataDirectory
 from control_utilities.track import RandomTrack, Track
 from control_utilities.path import Path
+from control_utilities.segmentation import Segmentations
 from control_utilities.matplotlib_wrapper import MatplotlibWrapper
 
 from ga import GAConfig, GAPathGenerator, TrackPath
-from segmentation import Segmentations
-
 from pid_controller import PIDController, PIDLateralController, PIDLongitudinalController
 
 import random

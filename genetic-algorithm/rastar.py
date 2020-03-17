@@ -1,3 +1,10 @@
+"""
+
+This module enables RA* on tracks
+
+Copyright (C) 2020, Hankel Bao <hankelbao@outlook.com>
+
+"""
 import numpy as np
 import heapq
 
