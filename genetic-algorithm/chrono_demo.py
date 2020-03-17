@@ -6,7 +6,8 @@ from control_utilities.track import RandomTrack, Track
 from control_utilities.path import Path
 from control_utilities.matplotlib_wrapper import MatplotlibWrapper
 
-from track_path import TrackPath, GAPathGenerator, GAConfig, Segmentations, RAStar
+from ga import GAConfig, GAPathGenerator
+from segmentation import Segmentations, TrackPath
 
 from pid_controller import PIDController, PIDLateralController, PIDLongitudinalController
 
