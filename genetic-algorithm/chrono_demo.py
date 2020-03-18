@@ -7,7 +7,7 @@ from control_utilities.path import Path
 from control_utilities.segmentation import Segmentations
 from control_utilities.matplotlib_wrapper import MatplotlibWrapper
 
-from ga import GAConfig, GAPathGenerator, TrackPath
+from ga import GAConfig, GAPathGenerator, TrackPath, ga_search
 from pid_controller import PIDController, PIDLateralController, PIDLongitudinalController
 
 import random
@@ -36,7 +36,7 @@ def main():
     # ------------
     # Create track
     # ------------
-    createRandomTrack = False
+    createRandomTrack = True
     track = None
 
     if createRandomTrack:
@@ -98,58 +98,17 @@ def main():
     segmentation = Segmentations(track)
     segmentation.create_segmentations()
 
-    config = GAConfig(segmentation)
-    config.initial_a = 0.5 * segmentation.width
-    config.a_min = np.full(segmentation.size, 2.5)
-    config.a_max = segmentation.width-2.5
-    generation = 0
-    stable_path = None
-    save = False
-
-    plt.ion()
-
-    generator = GAPathGenerator(segmentation, config)
-
-    while generator.stablized_generation < config.stablized_generation:
-        generator.ga_advance()
-        generator.plot_best_path()
-        generation += 1
-
-        lap_time = np.sum(generator.best_path.t)
-        centerline_time = np.sum(track.center.t)
-        print("Generation " + str(generation) + ": Lap time " + str(lap_time) + "s; saving " + str(centerline_time-lap_time) + "s from centerline_time.")
-
-        segmentation.plot()
-        plt.show()
-        if save:
-            plt.savefig("fig"+str(generation)+".png")
-        plt.pause(0.01)
-        plt.clf()
-
-    stable_path = generator.best_path
-    stable_path.plot_path("g-")
-
-    plt.show()
-
-    if save:
-        plt.savefig("fig"+str(generation)+"-stable.png")
-
+    stable_path = ga_search(segmentation)
     stable_path.generate_final_path()
 
     plt.clf()
     stable_path.generate_final_path()
-    # stable_path.plot_final_path()
-    stable_path.plot(color="-b", show=False)
-
-    v = stable_path.final_path.v
-
-    width = track.width
-
-    plt.clf()
-
     path = stable_path.final_path
+    path.update_vmax()
+    path.update_profile()
     path.plot(color='-b', show=False)
     path.plot_speed_profile()
+    plt.show()
     # path.v_max = v
     # plt.pause(1)
 
@@ -164,7 +123,7 @@ def main():
 
     # Longitudinal controller (throttle and braking)
     long_controller = PIDLongitudinalController(path)
-    long_controller.SetGains(Kp=0.4, Ki=0, Kd=0)
+    long_controller.SetGains(Kp=1.0, Ki=0, Kd=0)
     long_controller.SetLookAheadDistance(dist=1)
     # long_controller.SetTargetSpeed(speed=10.0)
 

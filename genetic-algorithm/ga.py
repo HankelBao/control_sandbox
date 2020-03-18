@@ -25,6 +25,9 @@ class TrackPath(Path):
         points = segmentation.get_points(a)
         super().__init__(points, closed=True, raw_mode=True)
 
+        self.update_vmax()
+        self.update_profile()
+
         self.adaptability = -np.sum(self.t)
         self.point_adapt = self.v_max
 
@@ -252,10 +255,37 @@ class GAPathGenerator:
             self.stablized_adaptability = self.best_path.adaptability
             self.stablized_generation = 0
 
-        adjusted_population = int(self.segmentation.size * 2 * (1.3 ** self.stablized_generation))
+        adjusted_population = int(self.segmentation.size * 2 * (1.8 ** self.stablized_generation))
         if adjusted_population > self.segmentation.size * 8:
             adjusted_population = self.segmentation.size * 8
         self.config.population = adjusted_population
 
+
     def plot_best_path(self):
         self.best_path.plot_path()
+
+
+def ga_search(segmentation):
+    config = GAConfig(segmentation)
+    config.initial_a = 0.5 * segmentation.width
+    config.a_min = np.full(segmentation.size, 2.5)
+    config.a_max = segmentation.width-2.5
+    generation = 0
+    stable_path = None
+    save = False
+
+    generator = GAPathGenerator(segmentation, config)
+
+    while generator.stablized_generation < 5:
+        generator.ga_advance()
+        # generator.plot_best_path()
+        generation += 1
+
+        lap_time = np.sum(generator.best_path.t)
+        print("Generation " + str(generation) + ": Lap time " + str(lap_time))
+
+    if save:
+        plt.savefig("fig"+str(generation)+"-stable.png")
+
+    stable_path = generator.best_path
+    return stable_path
