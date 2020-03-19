@@ -64,7 +64,7 @@ class GAConfig():
 
         self.mutation_range = np.full(self.segmentation_size, 0.5)
         self.safe_boundary = 0.3
-        self.stablized_generation = 5
+        self.stablized_generation = 3
 
 
 class GAPathGenerator:
@@ -268,8 +268,8 @@ class GAPathGenerator:
 def ga_search(segmentation):
     config = GAConfig(segmentation)
     config.initial_a = 0.5 * segmentation.width
-    config.a_min = np.full(segmentation.size, 2.5)
-    config.a_max = segmentation.width-2.5
+    config.a_min = np.full(segmentation.size, 3.2)
+    config.a_max = segmentation.width-3.2
     generation = 0
     stable_path = None
     save = False

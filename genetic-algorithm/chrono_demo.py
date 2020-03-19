@@ -22,8 +22,8 @@ def main():
         seed = random.randint(0,100)
 
     # Render preferences
-    matplotlib = 1
-    irrlicht = 0
+    matplotlib = 0
+    irrlicht = 1
 
     import matplotlib.pyplot as plt
     plt.figure()
@@ -106,9 +106,8 @@ def main():
     path = stable_path.final_path
     path.update_vmax()
     path.update_profile()
-    path.plot(color='-b', show=False)
-    path.plot_speed_profile()
-    plt.show()
+    #path.plot_speed_profile()
+    # plt.show()
     # path.v_max = v
     # plt.pause(1)
 
@@ -118,14 +117,13 @@ def main():
 
     # Lateral controller (steering)
     lat_controller = PIDLateralController(path)
-    lat_controller.SetGains(Kp=1.9, Ki=0, Kd=0.25)
+    lat_controller.SetGains(Kp=1.9, Ki=0.000, Kd=0.40)
     lat_controller.SetLookAheadDistance(dist=5)
 
     # Longitudinal controller (throttle and braking)
     long_controller = PIDLongitudinalController(path)
-    long_controller.SetGains(Kp=1.0, Ki=0, Kd=0)
-    long_controller.SetLookAheadDistance(dist=1)
-    # long_controller.SetTargetSpeed(speed=10.0)
+    long_controller.SetGains(Kp=0.4, Ki=0, Kd=0)
+    long_controller.SetLookAheadDistance(dist=path.ps[0]*2)
 
     # PID controller (wraps both lateral and longitudinal controllers)
     controller = PIDController(lat_controller, long_controller)
@@ -152,17 +150,18 @@ def main():
 
     if matplotlib:
         matplotlib_wrapper = MatplotlibWrapper(mat_step_size, vehicle, render_step_size=1.0/20)
+        path.plot(color='-b', show=False)
         matplotlib_wrapper.plotTrack(track)
 
     ch_time = mat_time = 0
     updates = total_time = 0.0
     while True:
-        if vehicle.vehicle.GetVehicleSpeed() < 7:
-            lat_controller.SetGains(Kp=0.2, Ki=0, Kd=0.6)
-        elif vehicle.vehicle.GetVehicleSpeed() < 8:
-            lat_controller.SetGains(Kp=0.3, Ki=0, Kd=0.45)
-        else:
-            lat_controller.SetGains(Kp=0.4, Ki=0, Kd=0.3)
+        # if vehicle.vehicle.GetVehicleSpeed() < 7:
+        #     lat_controller.SetGains(Kp=0.2, Ki=0, Kd=0.6)
+        # elif vehicle.vehicle.GetVehicleSpeed() < 8:
+        #     lat_controller.SetGains(Kp=0.3, Ki=0, Kd=0.45)
+        # else:
+        #     lat_controller.SetGains(Kp=0.4, Ki=0, Kd=0.3)
 
         if chrono_wrapper.Advance(ch_step_size) == -1:
             chrono_wrapper.Close()
@@ -180,7 +179,7 @@ def main():
 
         ch_time += ch_step_size
 
-        if ch_time > 60:
+        if ch_time > 300:
             break
         updates += 1.0
     # print('Update Summary:\n\tChrono Time :: {0:0.2f}\n\tTime per Update :: {1:0.5f}'.format(ch_time, total_time / updates))

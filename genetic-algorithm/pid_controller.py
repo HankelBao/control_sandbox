@@ -11,9 +11,9 @@ class PIDController:
         return self.lat_controller.target, self.lat_controller.sentinel
 
     def Advance(self, step, vehicle):
-        self.steering = self.lat_controller.Advance(step, vehicle)
-        self.throttle, self.braking = self.long_controller.Advance(step, vehicle)
-        return self.steering, self.throttle, self.braking
+        self.lat_controller.Advance(step, vehicle)
+        self.long_controller.Advance(step, vehicle)
+        # return self.steering, self.throttle, self.braking
 
 class PIDLateralController:
     def __init__(self, path):
@@ -43,18 +43,35 @@ class PIDLateralController:
 
     def Advance(self, step, vehicle):
         state = vehicle.GetState()
-        self.sentinel = chrono.ChVectorD(
-            self.dist * math.cos(state.yaw) + state.x,
-            self.dist * math.sin(state.yaw) + state.y,
+
+        current_pos = self.path.calcClosestPoint(state)
+        current_index = self.path.calcIndex(current_pos)
+
+        next_pos = chrono.ChVectorD(
+            self.path.ps[current_index]*2 * math.cos(state.yaw) + state.x,
+            self.path.ps[current_index]*2 * math.sin(state.yaw) + state.y,
             0,
         )
+        next_index = self.path.calcIndex(next_pos)
 
-        self.target = self.path.calcClosestPoint(self.sentinel)
+        direction = (next_index>current_index) - (next_index<current_index)
+        sentinel_index = self.path.next_segmentation_index(current_index, direction, 0.1, 10)
+
+        target = chrono.ChVectorD(self.path.x[sentinel_index], self.path.y[sentinel_index], 0)
+        sentinel_dist = 10-np.clip((self.target - current_pos).Length(), 4.0, 6)
+        self.sentinel = chrono.ChVectorD(
+            sentinel_dist * math.cos(state.yaw) + state.x,
+            sentinel_dist * math.sin(state.yaw) + state.y,
+            0,
+        )
+        point = self.path.calcClosestPoint(self.sentinel)
+        self.target = point #+(point-self.sentinel)
 
         # The "error" vector is the projection onto the horizontal plane (z=0) of
         # vector between sentinel and target
         err_vec = self.target - self.sentinel
         err_vec.z = 0
+
 
         # Calculate the sign of the angle between the projections of the sentinel
         # vector and the target vector (with origin at vehicle location).
@@ -68,14 +85,13 @@ class PIDLateralController:
 
         # Calculate current error integral (trapezoidal rule).
         self.erri += (err + self.err) * step / 2
-
         # Cache new error
         self.err = err
 
         # Return PID output (steering value)
-        self.steering = np.clip(
-            self.Kp * self.err + self.Ki * self.erri + self.Kd * self.errd, -1.0, 1.0
-        )
+        #self.Kp * self.err + self.Ki * self.erri + self.Kd * self.errd
+        #self.steering = np.clip(self.err/2.5+0.01*self.erri, -1.0, 1.0)
+        self.steering = np.clip(self.err/2.5+0.01*self.erri, -1.0, 1.0)
 
         vehicle.driver.SetTargetSteering(self.steering)
 
@@ -96,6 +112,14 @@ class PIDLateralController:
 
 
 class PIDLongitudinalController:
+    """
+    Steps to get the p/i/d here:
+    1. Set the target_speed to a reachable speed and tweak p and i of acc and brk so that the vehicle could stay at that speed nicely and slowly move to other speeds
+    2. Set kd so that the vehicle could accelerate as fast as it could. Vice Versa for brk.
+
+    In order to let the vehicle safely follow the speed profile, please take time to tweak.
+    Again, IT TAKES TIME to tweak to last digit.
+    """
     def __init__(self, path):
         self.Kp = 0
         self.Ki = 0
@@ -107,8 +131,6 @@ class PIDLongitudinalController:
 
         self.speed = 0
         self.target_speed = 0
-
-        self.throttle_threshold = 0.2
 
         self.path = path
 
@@ -122,6 +144,21 @@ class PIDLongitudinalController:
 
     def SetLookAheadDistance(self, dist):
         self.dist = dist
+
+    def __acc_until_reach_advance(self, vehicle, target_speed):
+        if not hasattr(self, 'reached'):
+            self.reached = False
+
+        if self.reached:
+            return True
+
+        if self.speed < target_speed:
+            vehicle.driver.SetTargetThrottle(1)
+            return False
+        else:
+            self.reached = True
+            return True
+
 
     def Advance(self, step, vehicle):
         state = vehicle.GetState()
@@ -137,34 +174,33 @@ class PIDLongitudinalController:
 
         self.speed = state.v
 
-        # Calculate current error
+        # err
         err = self.target_speed - self.speed
 
-        # Estimate error derivative (backward FD approximation)
-        self.errd = (err - self.err) / step
+        # errd
+        if np.sign(err) == np.sign(self.err):
+            self.errd += abs((err - self.err) / step)
+        else:
+            self.errd = 0
 
-        # Calculate current error integral (trapezoidal rule).
+        # erri
         self.erri += (err + self.err) * step / 2
 
         # Cache new error
         self.err = err
 
-        # Return PID output (steering value)
-        throttle = np.clip(
-            self.Kp * self.err + self.Ki * self.erri + self.Kd * self.errd, -1.0, 1.0
-        )
+        # if not self.__acc_until_reach_advance(vehicle, 10):
+        #     return
 
-        if throttle > 0:
-            # Vehicle moving too slow
+        if self.speed < self.target_speed:
             self.braking = 0
-            self.throttle = throttle
-        elif vehicle.driver.GetTargetThrottle() > self.throttle_threshold:
-            # Vehicle moving too fast: reduce throttle
-            self.braking = 0
-            self.throttle = vehicle.driver.GetTargetThrottle() + throttle
+            self.throttle = np.clip(
+                1.3 * self.err - 0.001 * self.erri + 0.002*self.errd, 0, 1.0
+            )
         else:
-            # Vehicle moving too fast: apply brakes
-            self.braking = -throttle
+            self.braking = -np.clip(
+                0.15 * self.err + 0.011 * self.erri - 0.00* self.errd, -0.8, 0
+            )
             self.throttle = 0
 
         vehicle.driver.SetTargetThrottle(self.throttle)

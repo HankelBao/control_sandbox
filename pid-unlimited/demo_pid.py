@@ -19,8 +19,8 @@ def main():
         seed = random.randint(0,100)
 
     # Render preferences
-    matplotlib = 1
-    irrlicht = 0
+    matplotlib = 0
+    irrlicht = 1
 
     # Chrono simulation step size
     ch_step_size = 1e-2
@@ -33,22 +33,25 @@ def main():
     reversed = random.randint(0,1)
     track = RandomTrack(x_max=50, y_max=50)
     track.generateTrack(seed=seed, reversed=reversed)
+    track.center.update_vmax()
+    track.center.update_profile()
     print('Using seed :: {}'.format(seed))
+
+    path = track.center
 
     # --------------------
     # Create controller(s)
     # --------------------
 
     # Lateral controller (steering)
-    lat_controller = PIDLateralController(track.center)
-    lat_controller.SetGains(Kp=0.4, Ki=0, Kd=0.25)
-    lat_controller.SetLookAheadDistance(dist=5)
+    lat_controller = PIDLateralController(path)
+    lat_controller.SetGains(Kp=2.3, Ki=0.005, Kd=0.9500)
+    lat_controller.SetLookAheadDistance(dist=path.s[0]*2)
 
     # Longitudinal controller (throttle and braking)
-    long_controller = PIDLongitudinalController(track.center)
+    long_controller = PIDLongitudinalController(path)
     long_controller.SetGains(Kp=0.4, Ki=0, Kd=0)
-    # long_controller.SetTargetSpeed(speed=1.0)
-    long_controller.SetLookAheadDistance(dist=1)
+    long_controller.SetLookAheadDistance(dist=path.s[0])
 
     # PID controller (wraps both lateral and longitudinal controllers)
     controller = PIDController(lat_controller, long_controller)
@@ -62,7 +65,7 @@ def main():
     system = createChronoSystem()
 
     # Calculate initial position and initial rotation of vehicle
-    initLoc, initRot = calcPose(track.center.points[0], track.center.points[1])
+    initLoc, initRot = calcPose(path.points[0], path.points[1])
     # Create chrono vehicle
     vehicle = ChronoVehicle(ch_step_size, system, controller, irrlicht=irrlicht, vehicle_type='json', initLoc=initLoc, initRot=initRot, vis_balls=True)
 
